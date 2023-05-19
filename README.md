@@ -1,5 +1,5 @@
 # cppserver-pgsql
-CPPServer is a No-Code engine for JSON microservices based on EPOLL and Modern C++.
+CPPServer is a No-Code engine for creating JSON microservices based on EPOLL and Modern C++.
 This Repo is the base C++ project for CPPServer w/PostgreSQL native API support.
 
 To learn about CPPServer please check the [documentation Repo](https://github.com/cppservergit/cppserver-docs) for an overview, QuickStart and tutorials, this README contains information of the native/docker build process only, assumes familiarity with CPPServer general concepts.
