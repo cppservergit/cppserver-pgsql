@@ -9,6 +9,7 @@ cppserver: env.o loki.o logger.o config.o audit.o httputils.o sql.o login.o sess
 	$(CC) $(CC_OPTS) $(CC_OBJS) $(CC_LIBS) -o "cppserver"
 	cp cppserver image
 	cp config.json image
+	chmod 777 image/cppserver
 
 main.o: src/main.cpp mse.o
 	$(CC) $(CC_OPTS) -I/usr/include/postgresql -DCPP_BUILD_DATE=$(DATE) -c src/main.cpp
