@@ -6,7 +6,7 @@ To learn about CPPServer please check the [documentation Repo](https://github.co
 
 This project compiles for Linux AMD64/ARM64 only, depends on specific Linux APIs (epoll), depends on PostgreSQL native client library (libpq).
 
-## Build pre-requisites - tested on Ubuntu 22.04 LTS
+## Requirements - tested on Ubuntu 22.04 LTS
 ```
 sudo apt update
 sudo apt install g++-12 libpq-dev make -y
