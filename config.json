@@ -1,0 +1,232 @@
+{
+	"services":	
+	[
+		{
+			"db": "db1",
+			"uri": "/ms/gasto/view",
+			"sql": "select * from sp_gasto_view()",
+			"function": "dbget"
+		},
+		{
+			"db": "db1",
+			"uri": "/ms/gasto/get",
+			"sql": "select * from sp_gasto_get($gasto_id)",
+			"function": "dbget",
+			"fields": [
+				{"name": "gasto_id", "type": "int", "required": "true"}
+			]
+		},	
+		{
+			"db": "db1",
+			"uri": "/ms/gasto/delete",
+			"sql": "call sp_gasto_delete($gasto_id)",
+			"function": "dbexec",
+			"fields": [
+				{"name": "gasto_id", "type": "int", "required": "true"}
+			],
+			"roles": [{"name":"can_delete"}]
+		},
+		{
+			"db": "db1",
+			"uri": "/ms/gasto/add",
+			"sql": "call sp_gasto_insert($fecha, $categ_id, $monto, $motivo)",
+			"function": "dbexec",
+			"fields": [
+				{"name": "monto", "type": "double", "required": "true"},
+				{"name": "fecha", "type": "date", "required": "true"},
+				{"name": "motivo", "type": "string", 	"required": "true"},
+				{"name": "categ_id", "type": "int", "required": "true"}
+			]
+		},
+		{
+			"db": "db1",
+			"uri": "/ms/gasto/update",
+			"sql": "call sp_gasto_update($gasto_id,  $fecha, $categ_id, $monto, $motivo)",
+			"function": "dbexec",
+			"fields": [
+				{"name": "gasto_id", "type": "int", "required": "true"},
+				{"name": "monto", "type": "double", "required": "true"},
+				{"name": "fecha", "type": "date", "required": "true"},
+				{"name": "motivo", "type": "string", 	"required": "true"},
+				{"name": "categ_id", "type": "int", "required": "true"}
+			],
+			"roles": [{"name":"can_update"}]
+		},	
+		{
+			"db": "db1",
+			"uri": "/ms/customer/info",
+			"sql": "select * from sp_customer_get($customerid); select * from sp_customer_orders($customerid)",
+			"function": "dbgetm",
+			"tags": [ {"tag": "customer"}, {"tag": "orders"} ],
+			"fields": [
+				{"name": "customerid", "type": "string", "required": "true"}
+			],
+			"secure": 0,
+			"audit": {"enabled": "false", "record": "Customer report: $customerid"}
+		},
+		{
+			"db": "db1",
+			"uri": "/ms/customer/search",
+			"sql": "select * from sp_customers_like($filter)",
+			"function": "dbget",
+			"fields": [
+				{"name": "filter", "type": "string", "required": "true"}
+			],
+			"secure": 0,
+			"audit": {"enabled": "false", "record": "Search Customers - company name starts with: $filter"}
+		},
+		{
+			"db": "db1",
+			"uri": "/ms/products/view",
+			"sql": "select * from sp_products_view()",
+			"function": "dbget"
+		},
+		{
+			"db": "db1",
+			"uri": "/ms/shippers/view",
+			"sql": "select * from sp_shippers_view()",
+			"function": "dbget"
+		},
+		{
+			"db": "db1",
+			"uri": "/ms/customers/view",
+			"sql": "select * from sp_customers_view()",
+			"function": "dbget"
+		},
+		{
+			"db": "db1",
+			"uri": "/ms/categ/view",
+			"sql": "select * from sp_categ_view()",
+			"function": "dbget"
+		},
+		{
+			"db": "db1",
+			"uri": "/ms/categ/get",
+			"sql": "select * from sp_categ_get($categ_id)",
+			"function": "dbget",
+			"fields": [
+				{"name": "categ_id", "type": "integer", "required": "true"}
+			]
+		},
+		{
+			"db": "db1",
+			"uri": "/ms/categ/add",
+			"sql": "insert into demo.categ (descrip) values ($descrip)",
+			"function": "dbexec",
+			"fields": [
+				{"name": "descrip", "type": "string", "required": "true"}
+			],
+			"roles": [{"name":"sysadmin"}, {"name":"can_insert"}],
+			"audit": {"enabled": "false", "record": "Category created: $descrip"}
+		},
+		{
+			"db": "db1",
+			"uri": "/ms/categ/update",
+			"sql": "update demo.categ set descrip = $descrip where categ_id = $categ_id",
+			"function": "dbexec",
+			"fields": [
+				{"name": "categ_id", "type": "integer", "required": "true"},
+				{"name": "descrip", "type": "string", "required": "true"}
+			],
+			"roles": [{"name":"can_update"}]
+		},
+		{
+			"db": "db1",
+			"uri": "/ms/categ/delete",
+			"sql": "delete from demo.categ where categ_id = $categ_id",
+			"function": "dbexec",
+			"fields": [
+				{"name": "categ_id", "type": "integer", "required": "true"}
+			],
+			"validator": { "function": "dbfind", "sql": "SELECT categ_id FROM demo.gasto where categ_id = $categ_id limit 1", "id": "_dialog_", "description": "$err.delete" },
+			"roles": [{"name":"sysadmin"}, {"name":"can_delete"}]
+		},
+		{
+			"db": "db1",
+			"uri": "/ms/query/search",
+			"sql": "select * from sp_getSalesByCategory2($date1, $date2)",
+			"function": "dbget",
+			"fields": [
+				{"name": "date1", "type": "date", "required": "true"},
+				{"name": "date2", "type": "date", "required": "true"}
+			],
+			"audit": {"enabled": "false", "record": "Sales report: $date1, $date2"}
+		},
+		{
+			"db": "db1",
+			"uri": "/ms/blob/add",
+			"sql": "insert into demo.blob (document, filename, content_type, content_len, title) values ($document, $filename, $content_type, $content_len, $title)",
+			"function": "dbexec",
+			"fields": [
+				{"name": "title", "type": "string", "required": "true"},
+				{"name": "document", "type": "string", "required": "true"},
+				{"name": "filename", "type": "string", "required": "true"},
+				{"name": "content_type", "type": "string", "required": "true"},
+				{"name": "content_len", "type": "integer", "required": "true"}
+			],
+			"audit": {"enabled": "false", "record": "Upload: $filename, $content_len"}
+		},
+		{
+			"db": "db1",
+			"uri": "/ms/blob/view",
+			"sql": "select blob_id, title, content_type from demo.blob order by blob_id",
+			"function": "dbget"
+		},
+		{
+			"db": "db1",
+			"uri": "/ms/blob/delete",
+			"sql": "delete from demo.blob where blob_id = $blob_id",
+			"function": "deleteFile",
+			"fields": [
+				{"name": "blob_id", "type": "integer", "required": "true"}
+			]
+		},
+		{
+			"db": "db1",
+			"uri": "/ms/blob/download",
+			"sql": "select document,content_type,filename from demo.blob where blob_id = $blob_id",
+			"function": "download",
+			"fields": [
+				{"name": "blob_id", "type": "integer", "required": "true"}
+			]
+		},
+		{
+			"uri": "/ms/status",
+			"function": "getServerInfo",
+			"secure": 0
+		},
+		{
+			"uri": "/ms/metrics",
+			"function": "getMetrics",
+			"secure": 0
+		},
+		{
+			"uri": "/ms/login",
+			"function": "login",
+			"fields": [
+				{"name": "login", "type": "string", "required": "true"},
+				{"name": "password", "type": "string", "required": "true"}
+			],
+			"secure": 0
+		},
+		{
+			"uri": "/ms/logout",
+			"function": "logout"
+		},
+		{
+			"uri": "/ms/sessions",
+			"function": "getSessionCount",
+			"secure": 0
+		},					
+		{
+			"uri": "/ms/version",
+			"function": "get_version",
+			"secure": 0
+		},
+		{
+			"uri": "/ms/ping",
+			"function": "ping",
+			"secure": 0
+		}
+	]
+}
