@@ -22,7 +22,7 @@ cd cppserver-pgsql
 make
 ```
 
-Output like this should be printed:
+Expected output:
 ```
 g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -march=native -c src/env.cpp
 g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -march=native -c src/loki.cpp
