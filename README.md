@@ -4,7 +4,7 @@ This Repo is the base C++ project for CPPServer w/PostgreSQL native API support.
 
 To learn about CPPServer please check the [documentation Repo](https://github.com/cppservergit/cppserver-docs) for an overview, QuickStart and tutorials, this README contains information of the native/docker build process only, assumes familiarity with CPPServer general concepts.
 
-This project compiles for Linux AMD64/ARM64 only, depends on specific Linux APIs (epoll), depends on PostgreSQL native client library (libpq).
+This project compiles on Linux (AMD64/ARM64) only, depends on specific Linux APIs (epoll), depends on PostgreSQL native client library (libpq).
 
 ## Requirements - tested on Ubuntu 22.04 LTS
 ```
