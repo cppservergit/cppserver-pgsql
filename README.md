@@ -1,4 +1,5 @@
 # cppserver-pgsql
+
 CPPServer is a No-Code engine for creating JSON microservices based on EPOLL and Modern C++.
 This Repo is the base C++ project for CPPServer w/PostgreSQL native API support.
 
@@ -144,3 +145,17 @@ ENTRYPOINT ["./cppserver"]
 ## Reliability
 
 CPPServer has been tested with up to 20.000 concurrent users bombarding requests on Ubuntu Server 22.04 both on VMs and baremetal, standalone and running inside Kubernetes (MicroK8s), processing millions of microservice requests. Such tests have also been executed using a binary compiled with instrumentation (-fsanitize, valgrind) to detect memory leaks and other memory-related vulnerabilities and none was found in the current release.
+
+## Additional components
+
+CPPServer has two more related projects, cppjob to execute scheduled tasks, and LoginServer to provide login service (via DBMS or LDAP) and security session creation, although CPPServer includes the capability for login and session, this is limited (no LDAP) and it's better manager in a separate component like LoginServer, it may be the case that these two projects are not yet released as open source repositories, if so they will be open source in short time, nevertheless their docker images are available on GitHub and fully documented:
+
+* [cppserver/pgsql-job](https://hub.docker.com/r/cppserver/pgsql-job)
+* [cppserver/pgsql-login](https://hub.docker.com/r/cppserver/pgsql-job)
+
+In a production environment, CPPServer will be running as a container on Kubernetes or a Cloud service like Azure's Container App, and it will be deployed with these two components mentioned above:
+
+![Pod deployment model](https://github.com/cppservergit/cppserver-pgsql/assets/126841556/45b023cd-fd1a-49c0-b82f-2429ac4ba6db)
+
+Both projects were build on the codebase of CPPServer, LoginServer is almost the same but with additional LDAP dependencies and focused on Login and Security Session creation.
+
