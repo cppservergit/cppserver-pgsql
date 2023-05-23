@@ -2,6 +2,8 @@
 CPPServer is a No-Code engine for creating JSON microservices based on EPOLL and Modern C++.
 This Repo is the base C++ project for CPPServer w/PostgreSQL native API support.
 
+![api-definition](https://github.com/cppservergit/cppserver-pgsql/assets/126841556/c366e193-44ce-489f-93d6-61fabdab9fc6)
+
 To learn about CPPServer please check the [documentation Repo](https://github.com/cppservergit/cppserver-docs) for an overview, QuickStart and tutorials, this README contains information of the native/docker build process only, assumes familiarity with CPPServer general concepts.
 
 This project compiles on Linux (AMD64/ARM64) only, depends on specific Linux APIs (epoll), depends on PostgreSQL native client library (libpq).
@@ -138,3 +140,7 @@ EXPOSE 8080
 WORKDIR /opt/cppserver
 ENTRYPOINT ["./cppserver"]
 ```
+
+## Reliability
+
+CPPServer has been tested with up to 20.000 concurrent users bombarding requests on Ubuntu Server 22.04 both on VMs and baremetal, standalone and running inside Kubernetes (MicroK8s), processing millions of microservice requests. Such tests have also been executed using a binary compiled with instrumentation (-fsanitize, valgrind) to detect memory leaks and other memory-related vulnerabilities and none was found in the current release.
