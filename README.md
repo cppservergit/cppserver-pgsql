@@ -144,7 +144,7 @@ ENTRYPOINT ["./cppserver"]
 
 ## Reliability
 
-CPPServer has been tested with up to 20.000 concurrent users bombarding requests on Ubuntu Server 22.04 both on VMs and baremetal, standalone and running inside Kubernetes (MicroK8s), processing millions of microservice requests. Such tests have also been executed using a binary compiled with instrumentation (-fsanitize, valgrind) to detect memory leaks and other memory-related vulnerabilities and none was found in the current release.
+CPPServer has been tested with up to 20000 concurrent users bombarding requests on Ubuntu Server 22.04 both on VMs and baremetal, standalone and running inside Kubernetes (MicroK8s), processing millions of microservice requests. Such tests have also been executed using a binary compiled with instrumentation (-fsanitize, valgrind) to detect memory leaks and other memory-related vulnerabilities and none was found in the current release.
 
 ## Additional components
 
