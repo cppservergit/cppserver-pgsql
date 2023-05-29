@@ -157,5 +157,5 @@ In a production environment, CPPServer will be running as a container on Kuberne
 
 ![Pod deployment model](https://github.com/cppservergit/cppserver-pgsql/assets/126841556/45b023cd-fd1a-49c0-b82f-2429ac4ba6db)
 
-Both projects were build on the codebase of CPPServer, LoginServer is almost the same but with additional LDAP dependencies and focused on Login and Security Session creation.
+Both projects were built on the codebase of CPPServer, LoginServer is almost the same but with additional LDAP dependencies and focused on Login and Security Session creation.
 
