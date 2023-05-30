@@ -123,7 +123,7 @@ The CPPServer's docker image uses the official Ubuntu 22.04 LTS as the base imag
 ```
 FROM ubuntu:latest
 LABEL maintainer="cppserver@martincordova.com"
-RUN apt update && apt upgrade -y 
+RUN apt update
 RUN apt install -y --no-install-recommends libpq5
 RUN apt clean
 RUN mkdir /opt/cppserver
