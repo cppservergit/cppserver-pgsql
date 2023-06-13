@@ -9,6 +9,11 @@ namespace logger
 		request_id = id;
 	}
 	
+	std::string get_request_id() noexcept
+	{
+		return request_id;
+	}
+	
 	void log(const std::string& source, const std::string& level, std::string msg, bool add_thread_id) noexcept
 	{
 		std::transform( msg.begin(), msg.end(), msg.begin(), 

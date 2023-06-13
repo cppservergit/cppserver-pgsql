@@ -365,8 +365,8 @@ namespace mse
 
 	//generic custom validators
 
-	//if the resultset return 1+ row then fail (jsonResp will contain something)
-	void dbfind(std::string &jsonResp, config::microService& ms) {
+	//if the resultset is not empty then fail (jsonResp will contain something)
+	void db_nomatch(std::string &jsonResp, config::microService& ms) {
 
 		const std::string STATUS_ERROR = R"(
 		{
@@ -382,6 +382,25 @@ namespace mse
 			jsonResp = replaceParam( STATUS_ERROR, { "$id", "$description" }, { ms.validatorConfig.id, ms.validatorConfig.description } );
 
 	}
+
+	//if the resultset is empty then fail (jsonResp will contain something)
+	void db_match(std::string &jsonResp, config::microService& ms) {
+
+		const std::string STATUS_ERROR = R"(
+		{
+			"status": "INVALID",
+			"validation": {
+				"id": "$id",
+				"description": "$description"
+			}
+		}
+		)";
+
+		if (!sql::has_rows(ms.db, ms.reqParams.sql(ms.validatorConfig.sql)))
+			jsonResp = replaceParam( STATUS_ERROR, { "$id", "$description" }, { ms.validatorConfig.id, ms.validatorConfig.description } );
+
+	}
+
 
 	inline auto getFunctionPointer(const std::string& funcName) {
 		if (funcName=="dbget")
@@ -413,8 +432,10 @@ namespace mse
 	}
 
 	inline auto getValidatorFunctionPointer(const std::string& funcName) {
-		if (funcName=="dbfind")
-			return dbfind;
+		if (funcName=="db_nomatch")
+			return db_nomatch;
+		if (funcName=="db_match")
+			return db_match;
 
 		throw std::runtime_error("getValidatorFunctionPointer -> invalid function name: " + funcName);
 	}
@@ -537,6 +558,64 @@ namespace mse
 		}
 	}
 
+	void send_mail(config::microService ms)
+	{
+		//capture current thread request-id
+		std::string x_request_id {logger::get_request_id()}; 
+		
+		//load template
+		std::stringstream buffer;
+		{
+			std::ifstream file(ms.email_config.body_template);
+			if (file.is_open())
+				buffer << file.rdbuf();
+			else {
+				logger::log("email", "error", "email body template not found: " + ms.email_config.body_template, true);
+				return;
+			}
+		}
+				
+		//get mail body
+		std::string body{ms.reqParams.get_body(buffer.str(), t_user_info.userLogin)};
+		
+		//replace input params if needed
+		if (ms.email_config.to == "$usermail")
+			ms.email_config.to = t_user_info.userMail;
+		
+		if (ms.email_config.to.starts_with("$"))
+			ms.email_config.to = ms.reqParams.get(ms.email_config.to.substr(1));
+
+		if (ms.email_config.cc == "$usermail")
+			ms.email_config.cc = t_user_info.userMail;
+		
+		if (ms.email_config.cc.starts_with("$"))
+			ms.email_config.cc = ms.reqParams.get(ms.email_config.cc.substr(1));
+		
+		if (!ms.email_config.attachment.empty())
+			ms.email_config.attachment = ms.reqParams.get_body(ms.email_config.attachment, t_user_info.userLogin);		
+
+		if (ms.email_config.attachment_filename.starts_with("$"))
+			ms.email_config.attachment_filename = ms.reqParams.get(ms.email_config.attachment_filename.substr(1));
+
+		//send mail using background thread
+		std::jthread task ( [ms, body, x_request_id]() {
+			smtp::mail m(env::get_str("CPP_MAIL_SERVER"), env::get_str("CPP_MAIL_USER"), env::get_str("CPP_MAIL_PWD"));
+			m.x_request_id = x_request_id; //for logging-tracing purposes
+			m.to = ms.email_config.to;
+			m.cc = ms.email_config.cc;
+			m.subject = ms.email_config.subject;
+			m.body = body;
+			if (!ms.email_config.attachment.empty()) {
+				if (!ms.email_config.attachment_filename.empty())
+					m.add_attachment(ms.email_config.attachment, ms.email_config.attachment_filename);
+				else
+					m.add_attachment(ms.email_config.attachment);
+			}
+			m.send();
+		} );
+		task.detach();
+	}
+	
 	struct service_engine {
 	  public:
 		service_engine() {
@@ -563,6 +642,8 @@ namespace mse
 					m->second.serviceFunction( m_json_buffer, m->second );
 					if ( m->second.audit_enabled )
 						audit::save(req.path, t_user_info.userLogin, req.remote_ip, m->second);
+					if (m->second.email_config.enabled)
+						send_mail(m->second);
 				}
 				return m_json_buffer;
 			} else {

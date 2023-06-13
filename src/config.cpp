@@ -128,7 +128,22 @@ namespace config
 				audit_record = json::to_string(audit["record"]);
 			}
 
-			m_services.emplace( uri, microService {db, sql, secure, requestParameters{params}, varNames, roleNames, validator , func, valFuncName, nullptr, nullptr, audit_enabled, audit_record} );
+			microService::email ec;
+			if (json::has_key(v, "email")) {
+				auto email =  v["email"];
+				ec.enabled = (json::to_string(email["enabled"]) == "true") ? true : false;
+				ec.body_template = json::to_string(email["template"]);
+				ec.to = json::to_string(email["to"]);
+				if (json::has_key(email, "cc"))
+					ec.cc = json::to_string(email["cc"]);
+				ec.subject = json::to_string(email["subject"]);
+				if (json::has_key(email, "attachment"))
+					ec.attachment = json::to_string(email["attachment"]);
+				if (json::has_key(email, "attachment-filename"))
+					ec.attachment_filename = json::to_string(email["attachment-filename"]);
+			}
+
+			m_services.emplace( uri, microService {db, sql, secure, requestParameters{params}, varNames, roleNames, validator , func, valFuncName, nullptr, nullptr, audit_enabled, audit_record, ec} );
 			
 			if (!secure) {
 				logger::log(LOGGER_SRC, "warn", "microservice " + uri + " is not secure");

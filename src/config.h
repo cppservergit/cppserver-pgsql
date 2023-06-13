@@ -123,6 +123,28 @@ namespace config
 				}
 				return record;
 			}
+			
+			//email body
+			inline std::string get_body(std::string body, const std::string& userlogin = "Undefined") const 
+			{
+				if (std::size_t pos = body.find("$userlogin"); pos != std::string::npos)
+					body.replace(pos, std::string("$userlogin").length(), userlogin);
+				for (const auto& p : params) 
+				{
+					std::string paramName = "$" + p.name;
+					while (true) 
+					{
+						if (std::size_t pos = body.find(paramName); pos != std::string::npos) {
+							if (p.value.empty()) 
+								body.replace(pos, paramName.length(), "");
+							else
+								body.replace(pos, paramName.length(), p.value);
+						} else
+							break;
+					}
+				}
+				return body;
+			}
 
 		private:
 			std::vector<inputParam> params;
@@ -148,6 +170,15 @@ namespace config
 		std::function<void(std::string& jsonResp, microService&)> customValidator;
 		bool audit_enabled {false};
 		std::string audit_record;
+		struct email {
+			bool enabled {false}; 
+			std::string body_template; 
+			std::string to; 
+			std::string cc;
+			std::string subject;
+			std::string attachment;
+			std::string attachment_filename;
+		} email_config;
 	};
 	
 	void parse();

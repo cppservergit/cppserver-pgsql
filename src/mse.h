@@ -24,10 +24,11 @@
 #include "httputils.h"
 #include "config.h"
 #include "audit.h"
+#include "email.h"
 
 namespace mse
 {
-	constexpr char SERVER_VERSION[] = "cppserver v1.2.0";
+	constexpr char SERVER_VERSION[] = "cppserver-pgsql v1.2.1";
 	void init() noexcept;
 	void http_server(int fd, http::request& req) noexcept;
 	void update_connections(int n) noexcept;

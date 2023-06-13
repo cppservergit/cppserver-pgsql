@@ -22,6 +22,7 @@ namespace logger
 	void log(const std::string& source, const std::string& level, std::string msg, bool add_thread_id = false) noexcept;
 	void print_env() noexcept;
 	void set_request_id(const std::string& id) noexcept;
+	std::string get_request_id() noexcept;
 }
 
 #endif /* LOGGER_H_ */
