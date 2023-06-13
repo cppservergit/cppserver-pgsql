@@ -12,7 +12,7 @@ This project compiles on Linux (AMD64/ARM64) only, depends on specific Linux API
 ## Requirements - tested on Ubuntu 22.04 LTS
 ```
 sudo apt update
-sudo apt install g++-12 libpq-dev make -y
+sudo apt install g++-12 libpq-dev libcurl4-openssl-dev make -y
 ```
 
 Note: You can use GCC-13 too if you have it installed, for Ubuntu 23.04 and greater you can use "apt install g++" instead of "g++-12". In any case you will have to edit Makefile to change the compiler name.
@@ -84,6 +84,7 @@ cppserver-pgsql
     ├── audit.h
     ├── config.cpp
     ├── config.h
+    ├── email.h
     ├── env.cpp
     ├── env.h
     ├── httputils.cpp
@@ -112,7 +113,7 @@ SHELL=bash
 DATE=$(shell printf '%(%Y%m%d)T')
 CC=g++-12
 CC_OPTS=-O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -march=native
-CC_LIBS=-lpq
+CC_LIBS=-lpq -lcurl
 CC_OBJS=env.o loki.o logger.o config.o audit.o httputils.o sql.o login.o session.o mse.o main.o
 ```
 
