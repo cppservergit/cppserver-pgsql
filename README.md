@@ -27,18 +27,18 @@ make
 
 Expected output:
 ```
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -march=native -c src/env.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -march=native -c src/loki.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -march=native -c src/logger.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -march=native -c src/config.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -march=native -c src/audit.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -march=native -c src/httputils.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -march=native -I/usr/include/postgresql -c src/sql.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -march=native -I/usr/include/postgresql -c src/login.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -march=native -I/usr/include/postgresql -c src/session.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -march=native -I/usr/include/postgresql -DCPP_BUILD_DATE=20230519 -c src/mse.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -march=native -I/usr/include/postgresql -DCPP_BUILD_DATE=20230519 -c src/main.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -march=native env.o loki.o logger.o config.o audit.o httputils.o sql.o login.o session.o mse.o main.o -lpq -o "cppserver"
+g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -c src/env.cpp
+g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -c src/logger.cpp
+g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -c src/config.cpp
+g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -c src/audit.cpp
+g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -c src/email.cpp
+g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -c src/httputils.cpp
+g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -I/usr/include/postgresql -c src/sql.cpp
+g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -I/usr/include/postgresql -c src/login.cpp
+g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -I/usr/include/postgresql -c src/session.cpp
+g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -I/usr/include/postgresql -DCPP_BUILD_DATE=20230620 -c src/mse.cpp
+g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -I/usr/include/postgresql -DCPP_BUILD_DATE=20230620 -c src/main.cpp
+g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init env.o logger.o config.o audit.o email.o httputils.o sql.o login.o session.o mse.o main.o -lpq -lcurl -o "cppserver"
 cp cppserver image
 cp config.json image
 chmod 777 image/cppserver
@@ -84,6 +84,7 @@ cppserver-pgsql
     ├── audit.h
     ├── config.cpp
     ├── config.h
+    ├── email.cpp
     ├── email.h
     ├── env.cpp
     ├── env.h
@@ -94,8 +95,6 @@ cppserver-pgsql
     ├── logger.h
     ├── login.cpp
     ├── login.h
-    ├── loki.cpp
-    ├── loki.h
     ├── main.cpp
     ├── mse.cpp
     ├── mse.h
@@ -112,9 +111,9 @@ As mentioned before, you may need to change the CC variable that points to the c
 SHELL=bash
 DATE=$(shell printf '%(%Y%m%d)T')
 CC=g++-12
-CC_OPTS=-O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -march=native
+CC_OPTS=-O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init
 CC_LIBS=-lpq -lcurl
-CC_OBJS=env.o loki.o logger.o config.o audit.o httputils.o sql.o login.o session.o mse.o main.o
+CC_OBJS=env.o logger.o config.o audit.o email.o httputils.o sql.o login.o session.o mse.o main.o
 ```
 
 ## dockerfile
@@ -135,9 +134,6 @@ ENV CPP_HTTP_LOG=0
 ENV CPP_POOL_SIZE=4
 ENV CPP_PORT=8080
 ENV CPP_LOGIN_LOG=0
-ENV CPP_STDERR_LOG=1
-ENV CPP_LOKI_SERVER=""
-ENV CPP_LOKI_PORT=3100
 EXPOSE 8080
 WORKDIR /opt/cppserver
 ENTRYPOINT ["./cppserver"]
