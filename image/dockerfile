@@ -1,7 +1,7 @@
 FROM ubuntu:latest
 LABEL maintainer="cppserver@martincordova.com"
-RUN apt update && apt upgrade -y 
-RUN apt install -y --no-install-recommends libpq5
+RUN apt update
+RUN apt install -y --no-install-recommends libpq5 libcurl4
 RUN apt clean
 RUN mkdir /opt/cppserver
 RUN mkdir /etc/cppserver
@@ -11,9 +11,6 @@ ENV CPP_HTTP_LOG=0
 ENV CPP_POOL_SIZE=4
 ENV CPP_PORT=8080
 ENV CPP_LOGIN_LOG=0
-ENV CPP_STDERR_LOG=1
-ENV CPP_LOKI_SERVER=""
-ENV CPP_LOKI_PORT=3100
 EXPOSE 8080
 WORKDIR /opt/cppserver
 ENTRYPOINT ["./cppserver"]
