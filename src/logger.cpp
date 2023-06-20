@@ -37,26 +37,9 @@ namespace logger
 		}
 		
 		buffer.pop_back();
-		buffer.append("}");
-		
-		if (env::stderr_log_enabled())
-			fprintf(stderr, "%s\n", buffer.c_str());
-		
-		if (env::loki_enabled())
-			loki::push_log_record(buffer);
+		buffer.append("}\n");
+		std::clog << buffer;
 	}
 
-	void print_env() noexcept
-	{
-		log("env", "info", "port: " + std::to_string(env::port()));
-		log("env", "info", "pool size: " + std::to_string(env::pool_size()));
-		log("env", "info", "http log: " + std::to_string(env::http_log_enabled()));
-		log("env", "info", "stderr log: " + std::to_string(env::stderr_log_enabled()));
-		log("env", "info", "login log: " + std::to_string(env::login_log_enabled()));
-		if (env::loki_enabled())
-			log("env", "info", "loki push enabled using " + env::loki_server() + ":" + std::to_string(env::loki_port()));
-		else 
-			log("env", "info", "loki push disabled");
-	}
 }
 

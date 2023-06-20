@@ -19,6 +19,9 @@
 #include <random>
 #include <cstdio>
 #include <vector>
+#include <sstream>
+#include <cstring>
+#include <sys/socket.h>
 #include "logger.h"
 
 namespace http

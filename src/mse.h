@@ -18,6 +18,8 @@
 #include <filesystem>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "env.h"
+#include "logger.h"
 #include "login.h"
 #include "sql.h"
 #include "session.h"
@@ -28,7 +30,7 @@
 
 namespace mse
 {
-	constexpr char SERVER_VERSION[] = "cppserver-pgsql v1.2.1";
+	constexpr char SERVER_VERSION[] = "cppserver-pgsql v1.2.2";
 	void init() noexcept;
 	void http_server(int fd, http::request& req) noexcept;
 	void update_connections(int n) noexcept;

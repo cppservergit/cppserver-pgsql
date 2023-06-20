@@ -133,7 +133,7 @@ void consumer(std::stop_token tok) noexcept
 		epoll_ctl(params.epoll_fd, EPOLL_CTL_MOD, params.fd, &event);
 	}
 	
-	//ending task - free resources if necessary
+	//ending task - free resources
 	logger::log("pool", "info", "stopping worker thread", true);
 }
 
@@ -265,10 +265,14 @@ void start_epoll(int port) noexcept
 
 void print_server_info(std::string pod_name) noexcept 
 {
-	logger::print_env();
+	logger::log("env", "info", "port: " + std::to_string(env::port()));
+	logger::log("env", "info", "pool size: " + std::to_string(env::pool_size()));
+	logger::log("env", "info", "login log: " + std::to_string(env::login_log_enabled()));
+	logger::log("env", "info", "http log: " + std::to_string(env::http_log_enabled()));
+	
 	std::string msg1; msg1.reserve(255);
 	std::string msg2; msg1.reserve(255);
-	msg1.append(pod_name).append(" PID: ").append(std::to_string(getpid())).append(" starting ").append(mse::SERVER_VERSION).append("-").append(std::to_string(CPP_BUILD_DATE));
+	msg1.append("Pod: " + pod_name).append(" PID: ").append(std::to_string(getpid())).append(" starting ").append(mse::SERVER_VERSION).append("-").append(std::to_string(CPP_BUILD_DATE));
 	msg2.append("hardware threads: ").append(std::to_string(std::thread::hardware_concurrency())).append(" GCC: ").append(__VERSION__);
 	logger::log("server", "info", msg1);
 	logger::log("server", "info", msg2);
@@ -301,11 +305,6 @@ void start_server() noexcept
 
 int main()
 {
-	if (env::loki_enabled()) {
-		loki::start_task();
-		logger::log("loki", "info", "background task started");
-	}
-
 	m_signal = get_signalfd();
 	logger::log("signal", "info", "signal interceptor registered");
 	
@@ -317,9 +316,4 @@ int main()
 	start_server();
 
 	logger::log("server", "info", pod_name + " shutting down...");
-
-	if (env::loki_enabled()) {
-		logger::log("loki", "info", "stopping background task");
-		loki::stop_task();
-	}
 }

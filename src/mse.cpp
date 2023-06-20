@@ -575,7 +575,7 @@ namespace mse
 			}
 		}
 				
-		//get mail body
+		//get mail body with params replaced
 		std::string body{ms.reqParams.get_body(buffer.str(), t_user_info.userLogin)};
 		
 		//replace input params if needed
