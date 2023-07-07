@@ -27,18 +27,18 @@ make
 
 Expected output:
 ```
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -c src/env.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -c src/logger.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -c src/config.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -c src/audit.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -c src/email.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -c src/httputils.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -I/usr/include/postgresql -c src/sql.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -I/usr/include/postgresql -c src/login.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -I/usr/include/postgresql -c src/session.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -I/usr/include/postgresql -DCPP_BUILD_DATE=20230620 -c src/mse.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init -I/usr/include/postgresql -DCPP_BUILD_DATE=20230620 -c src/main.cpp
-g++-12 -O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init env.o logger.o config.o audit.o email.o httputils.o sql.o login.o session.o mse.o main.o -lpq -lcurl -o "cppserver"
+g++-12 -Wno-unused-parameter -Wpedantic -Wall -Wextra -O3 -std=c++23 -pthread -flto=6 -fno-extern-tls-init -c src/env.cpp
+g++-12 -Wno-unused-parameter -Wpedantic -Wall -Wextra -O3 -std=c++23 -pthread -flto=6 -fno-extern-tls-init -c src/logger.cpp
+g++-12 -Wno-unused-parameter -Wpedantic -Wall -Wextra -O3 -std=c++23 -pthread -flto=6 -fno-extern-tls-init -c src/config.cpp
+g++-12 -Wno-unused-parameter -Wpedantic -Wall -Wextra -O3 -std=c++23 -pthread -flto=6 -fno-extern-tls-init -c src/audit.cpp
+g++-12 -Wno-unused-parameter -Wpedantic -Wall -Wextra -O3 -std=c++23 -pthread -flto=6 -fno-extern-tls-init -c src/email.cpp
+g++-12 -Wno-unused-parameter -Wpedantic -Wall -Wextra -O3 -std=c++23 -pthread -flto=6 -fno-extern-tls-init -c src/httputils.cpp
+g++-12 -Wno-unused-parameter -Wpedantic -Wall -Wextra -O3 -std=c++23 -pthread -flto=6 -fno-extern-tls-init -I/usr/include/postgresql -c src/sql.cpp
+g++-12 -Wno-unused-parameter -Wpedantic -Wall -Wextra -O3 -std=c++23 -pthread -flto=6 -fno-extern-tls-init -I/usr/include/postgresql -c src/login.cpp
+g++-12 -Wno-unused-parameter -Wpedantic -Wall -Wextra -O3 -std=c++23 -pthread -flto=6 -fno-extern-tls-init -I/usr/include/postgresql -c src/session.cpp
+g++-12 -Wno-unused-parameter -Wpedantic -Wall -Wextra -O3 -std=c++23 -pthread -flto=6 -fno-extern-tls-init -I/usr/include/postgresql -DCPP_BUILD_DATE=20230706 -c src/mse.cpp
+g++-12 -Wno-unused-parameter -Wpedantic -Wall -Wextra -O3 -std=c++23 -pthread -flto=6 -fno-extern-tls-init -I/usr/include/postgresql -DCPP_BUILD_DATE=20230706 -c src/main.cpp
+g++-12 -Wno-unused-parameter -Wpedantic -Wall -Wextra -O3 -std=c++23 -pthread -flto=6 -fno-extern-tls-init env.o logger.o config.o audit.o email.o httputils.o sql.o login.o session.o mse.o main.o -lpq -lcurl -o "cppserver"
 cp cppserver image
 cp config.json image
 chmod 777 image/cppserver
@@ -90,7 +90,6 @@ cppserver-pgsql
     ├── env.h
     ├── httputils.cpp
     ├── httputils.h
-    ├── json.h
     ├── logger.cpp
     ├── logger.h
     ├── login.cpp
@@ -111,14 +110,14 @@ As mentioned before, you may need to change the CC variable that points to the c
 SHELL=bash
 DATE=$(shell printf '%(%Y%m%d)T')
 CC=g++-12
-CC_OPTS=-O3 -std=c++20 -pthread -flto=4 -fno-extern-tls-init
+CC_OPTS=-Wno-unused-parameter -Wpedantic -Wall -Wextra -O3 -std=c++23 -pthread -flto=4 -fno-extern-tls-init
 CC_LIBS=-lpq -lcurl
 CC_OBJS=env.o logger.o config.o audit.o email.o httputils.o sql.o login.o session.o mse.o main.o
 ```
 
 ## dockerfile
 
-The CPPServer's docker image uses the official Ubuntu 22.04 LTS as the base image, a few environment variables are defined, but not all of the required variables, some were left out because those will are defined in the deployment artifact (YAML files) using secrets, mainly for database connection strings, when using Kubernetes or a serverless Cloud service like Azure Container Apps, please visit CPPServer's [QuickStart tutorial](https://github.com/cppservergit/cppserver-docs/blob/main/quickstart.md) to learn all about CPPServer configuration options.
+The CPPServer's docker image uses the official Ubuntu 22.04 LTS as the base image, a few environment variables are defined, but not all of the required variables, some were left out because those will are defined in the deployment artifact (YAML files) using secrets, mainly for database connection strings when using Kubernetes or a serverless Cloud service like Azure Container Apps, please visit CPPServer's [QuickStart tutorial](https://github.com/cppservergit/cppserver-docs/blob/main/quickstart.md) to learn all about CPPServer configuration options.
 
 ```
 FROM ubuntu:latest
