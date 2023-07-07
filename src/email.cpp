@@ -108,11 +108,11 @@ namespace smtp
 
 			std::string mail::get_response_date() noexcept
 			{
-				char buf[256];
-				time_t now = time(0);
-				struct tm tm = *gmtime(&now);
-				strftime(buf, sizeof buf, "%a, %d %b %Y %H:%M:%S GMT", &tm);
-				return std::string(buf);
+				auto t = std::time(nullptr);
+				auto tm = *std::localtime(&t);
+				std::ostringstream oss;
+				oss << std::put_time(&tm, "%a, %d %b %Y %H:%M:%S GMT");
+				return oss.str();
 			}	
 	
 }

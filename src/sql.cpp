@@ -4,12 +4,25 @@ namespace sql
 {
 	const std::string LOGGER_SRC {"sql"};
 
+	//get a clean error message suitable for JSON logs
+	inline std::string get_error(PGconn* conn)
+	{
+		std::string msg {PQerrorMessage(conn)};
+		if (auto pos = msg.find("\n"); pos != std::string::npos)
+			msg.erase(pos);
+		if (auto pos = msg.find("ERROR:  "); pos != std::string::npos)
+			msg.erase(0, pos + 8);
+		for (char& c: msg) 
+			if (c == '"') c = '\'';
+		return msg;
+	}
+
 	struct dbutil 
 	{
 		
-		PGconn* conn;
-		std::string m_dbconnstr;
-		
+		std::string m_dbconnstr{""};
+		PGconn* conn{nullptr};
+				
 		dbutil() 
 		{
 		}
@@ -18,7 +31,7 @@ namespace sql
 		{
 			conn = PQconnectdb(m_dbconnstr.c_str());
 			if (PQstatus(conn) != CONNECTION_OK)
-				logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " " + std::string(PQerrorMessage(conn)), true);
+				logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + ": " + get_error(conn), true);
 		}
 		
 		dbutil(dbutil &&source) : m_dbconnstr{source.m_dbconnstr}, conn{source.conn}
@@ -38,13 +51,13 @@ namespace sql
 		inline void reset_connection() noexcept
 		{
 			if ( PQstatus(conn) == CONNECTION_BAD ) {
-				logger::log(LOGGER_SRC, "warn", std::string(__PRETTY_FUNCTION__) + " connection to database " + std::string(PQdb(conn)) + " no longer valid, reconnecting... ", true);
+				logger::log(LOGGER_SRC, "warn", std::string(__FUNCTION__) + ": connection to database " + std::string(PQdb(conn)) + " no longer valid, reconnecting... ", true);
 				PQfinish(conn);
 				conn = PQconnectdb(m_dbconnstr.c_str());
 				if (PQstatus(conn) != CONNECTION_OK)
-					logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " error reconnecting to database " + std::string(PQdb(conn)) + " - " + std::string(PQerrorMessage(conn)), true);
+					logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + ": error reconnecting to database " + std::string(PQdb(conn)) + " - " + get_error(conn), true);
 				else
-					logger::log(LOGGER_SRC, "info", std::string(__PRETTY_FUNCTION__) + " connection to database " +  std::string(PQdb(conn)) + " restored", true);
+					logger::log(LOGGER_SRC, "info", std::string(__FUNCTION__) + ": connection to database " +  std::string(PQdb(conn)) + " restored", true);
 			}
 		}
 	
@@ -96,7 +109,7 @@ namespace sql
 			dbconns.insert({dbname, dbutil(conn_info)});
 		}
 		else {
-			std::string error{std::string(__PRETTY_FUNCTION__) + " duplicated dbname: " + dbname};
+			std::string error{std::string(__FUNCTION__) + ": duplicated dbname: " + dbname};
 			throw std::runtime_error(error.c_str());
 		}
 	}
@@ -105,7 +118,7 @@ namespace sql
 	PGconn* getdb(const std::string& dbname)
 	{
 		if (!dbconns.contains(dbname)) {
-			std::string error{std::string(__PRETTY_FUNCTION__) + " invalid dbname: " + dbname};
+			std::string error{std::string(__FUNCTION__) + ": invalid dbname: " + dbname};
 			throw std::runtime_error(error.c_str());
 		}
 		return dbconns[dbname].conn;
@@ -130,7 +143,7 @@ namespace sql
 			PQclear(res);
 			if ( PQstatus(conn) == CONNECTION_BAD ) {
 				if (retries == max_retries) {
-					logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " connection retries exhausted, cannot connect to database", true);
+					logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + ": cannot connect to database", true);
 					json.append(DBLIB_ERROR);
 					return;
 				} else {
@@ -139,7 +152,7 @@ namespace sql
 					goto retry;
 				}
 			} else {
-				logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " " + std::string(PQerrorMessage(conn)), true);
+				logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + ": " + get_error(conn), true);
 				json.append(DBLIB_ERROR);
 				return;
 			}
@@ -185,7 +198,7 @@ namespace sql
 				PQclear(res);
 				if ( PQstatus(conn) == CONNECTION_BAD ) {
 					if (retries == max_retries) {
-						logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " connection retries exhausted, cannot connect to database", true);
+						logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + ": cannot connect to database", true);
 						json.append(DBLIB_ERROR);
 						return;
 					} else {
@@ -194,7 +207,7 @@ namespace sql
 						goto retry;
 					}
 				} else {
-					logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " " + std::string(PQerrorMessage(conn)), true);
+					logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + ": " + get_error(conn), true);
 					json.clear(); json.append(DBLIB_ERROR);
 					return;
 				}
@@ -214,7 +227,6 @@ namespace sql
 	bool exec_sql(const std::string& dbname, const std::string& sql)
 	{
 		int retries {0};
-		constexpr int max_retries{3};
 	retry:
 		PGconn *conn = getdb(dbname);
 		PGresult *res = PQexec(conn, sql.c_str());
@@ -222,7 +234,7 @@ namespace sql
 			PQclear(res);
 			if ( PQstatus(conn) == CONNECTION_BAD ) {
 				if (retries == max_retries) {
-					logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " connection retries exhausted, cannot connect to database", true);
+					logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + ": cannot connect to database", true);
 					return false;
 				} else {
 					retries++;
@@ -230,7 +242,7 @@ namespace sql
 					goto retry;
 				}
 			} else {
-				logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " " + std::string(PQerrorMessage(conn)), true);
+				logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + ": " + get_error(conn), true);
 				return false;
 			}
 		}
@@ -242,7 +254,6 @@ namespace sql
 	bool has_rows(const std::string& dbname, const std::string &sql)
 	{
 		int retries {0};
-		constexpr int max_retries{3};
 	
 	retry:
 		PGconn *conn = getdb(dbname);
@@ -252,7 +263,7 @@ namespace sql
 			PQclear(res);
 			if ( PQstatus(conn) == CONNECTION_BAD ) {
 				if (retries == max_retries) {
-					logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " connection retries exhausted, cannot connect to database", true);
+					logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + ": cannot connect to database", true);
 					throw std::runtime_error("database connection error");
 				} else {
 					retries++;
@@ -260,7 +271,7 @@ namespace sql
 					goto retry;
 				}
 			} else {
-				logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " " + std::string(PQerrorMessage(conn)), true);
+				logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + ": " + get_error(conn), true);
 				throw std::runtime_error("database query execution error");
 			}
 		}
@@ -276,7 +287,6 @@ namespace sql
 	std::unordered_map<std::string, std::string> get_record(const std::string& dbname, const std::string& sql)
 	{
 		int retries {0};
-		constexpr int max_retries{3};
 		std::unordered_map<std::string, std::string> rec;
 		rec.reserve(5);
 		
@@ -288,7 +298,7 @@ namespace sql
 			PQclear(res);
 			if ( PQstatus(conn) == CONNECTION_BAD ) {
 				if (retries == max_retries) {
-					logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " connection retries exhausted, cannot connect to database", true);
+					logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + ": cannot connect to database", true);
 					throw std::runtime_error("SQL database error");
 				} else {
 					retries++;
@@ -296,7 +306,7 @@ namespace sql
 					goto retry;
 				}
 			} else {
-				logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " " + std::string(PQerrorMessage(conn)), true);
+				logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + ": " + get_error(conn), true);
 				throw std::runtime_error("SQL database error");
 			}
 		}		
@@ -312,6 +322,47 @@ namespace sql
 		}
 		PQclear(res);
 		return rec;
+	}
+
+	//executes a query that returns JSON, the resultset should contain only one row with one column named json
+	//returns status EMPTY if: the resultset is empty (no rows) or the json column is NULL
+	void get_json_record(const std::string& dbname, std::string &json, const std::string &sql)
+	{
+		int retries {0};
+		
+	retry:
+		PGconn *conn = getdb(dbname);	
+		PGresult *res = PQexec(conn, sql.c_str());
+		
+		if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+			PQclear(res);
+			if ( PQstatus(conn) == CONNECTION_BAD ) {
+				if (retries == max_retries) {
+					logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + ": cannot connect to database", true);
+					throw std::runtime_error("SQL database error");
+				} else {
+					retries++;
+					reset(dbname);
+					goto retry;
+				}
+			} else {
+				logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + ": " + get_error(conn), true);
+				throw std::runtime_error("SQL database error");
+			}
+		}
+	
+		int rows {PQntuples(res)};
+		bool is_null {0};
+		if (rows) {
+			is_null = PQgetisnull(res, 0, 0);
+			if (!is_null) {
+				json.append("{\"status\":\"OK\", \"data\":").append(PQgetvalue(res, 0, 0)).append("}");
+			}
+		}
+		if (!rows || is_null) {
+			json.append("{\"status\":\"EMPTY\"}");
+		}
+		PQclear(res);
 	}
 	
 }

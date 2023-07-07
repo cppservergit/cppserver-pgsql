@@ -2,7 +2,7 @@
  * audit - default implementation os audit recorder, saves to logger
  *
  *  Created on: May 17, 2023
- *      Author: Martín Córdova cppserver@martincordova.com - https://cppserver.com
+ *      Author: Martin Cordova cppserver@martincordova.com - https://cppserver.com
  *      Disclaimer: some parts of this library may have been taken from sample code publicly available
  *		and written by third parties. Free to use in commercial projects, no warranties and no responsabilities assumed 
  *		by the author, use at your own risk. By using this code you accept the forementioned conditions.

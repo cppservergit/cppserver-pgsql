@@ -21,10 +21,9 @@ namespace mse
 
 	using httpRequestParameters = std::unordered_map<std::string, std::string>;
 
-	thread_local std::unordered_map<std::string, std::vector<char>> t_page_cache; //fileserver
-
 	/* utility functions */
-	inline std::string trim(const std::string & source) {
+	inline std::string trim(const std::string & source)
+	{
 		std::string s(source);
 		s.erase(0,s.find_first_not_of(" "));
 		s.erase(s.find_last_not_of(" ")+1);
@@ -50,7 +49,8 @@ namespace mse
 	}
 
 	// check for valid date in format yyyy-mm-dd
-	inline bool isDate(const std::string & value) {
+	inline bool isDate(const std::string & value) 
+	{
 
 		if (value.length() != 10)
 			return false;
@@ -87,7 +87,8 @@ namespace mse
 
 	}
 
-	inline void replaceString(std::string &str, const std::string& from, const std::string& to) {
+	inline void replaceString(std::string &str, const std::string& from, const std::string& to) 
+	{
 		if (from.empty() || to.empty())
 			return;
 		size_t start_pos = 0;
@@ -98,19 +99,23 @@ namespace mse
 	}
 
 
-	inline std::string get_timestamp() {
-		std::time_t t = std::time(nullptr);
-		char dtbuffer[21] = {'\0'};
-		std::strftime(dtbuffer, 21, "%Y-%m-%d %H:%M:%S",  std::localtime(&t));
-		return std::string{dtbuffer};
+	inline std::string get_timestamp() 
+	{
+        auto t = std::time(nullptr);
+        auto tm = *std::localtime(&t);
+        std::ostringstream oss;
+        oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+        return oss.str();	
 	}
 
-	inline std::string replaceParam(std::string src, const std::string& oldStr, const std::string& newStr) {
+	inline std::string replaceParam(std::string src, const std::string& oldStr, const std::string& newStr) 
+	{
 		src.replace(src.find(oldStr), oldStr.length(), newStr);
 		return src;
 	}
 
-	inline std::string replaceParam(std::string src, const std::vector<std::string>& oldStr, const std::vector<std::string>& newStr) {
+	inline std::string replaceParam(std::string src, const std::vector<std::string>& oldStr, const std::vector<std::string>& newStr) 
+	{
 		for (std::size_t i=0;i<oldStr.size();++i) {
 			src.replace(src.find(oldStr[i]), oldStr[i].length(), newStr[i]);
 		}
@@ -119,15 +124,18 @@ namespace mse
 
 	/* end utility functions */
 
-	class LoginRequiredException : public std::exception {
+	class LoginRequiredException : public std::exception 
+	{
 	public:
 		const char * what () {
 			return "security session not found.";
 		}
 	};
 
-	struct userThreadInfo {
-		void clear() noexcept {
+	struct userThreadInfo 
+	{
+		void clear() noexcept 
+		{
 			sessionID = "";
 			ipAddr = "";
 			userLogin = "";
@@ -146,7 +154,8 @@ namespace mse
 	} thread_local t_user_info;
 
 	//security session support
-	inline bool sessionUpdate() noexcept {
+	inline bool sessionUpdate() noexcept 
+	{
 		if (t_user_info.sessionID.empty())
 			return false;
 
@@ -157,7 +166,8 @@ namespace mse
 		}
 	}
 
-	inline void sessionCreate(const std::string& userid, const std::string& mail,  const std::string& roles) {
+	inline void sessionCreate(const std::string& userid, const std::string& mail,  const std::string& roles) 
+	{
 		std::string sessionid{""};
 		if ( session::create(sessionid, userid, mail, t_user_info.ipAddr, roles) ) {
 			t_user_info.sessionID = sessionid;
@@ -170,6 +180,12 @@ namespace mse
 
 	//generic JSON microservices
 
+	//returns json straight from the database
+	void dbget_json(std::string& jsonBuffer, config::microService& ms) 
+	{
+		sql::get_json_record(ms.db, jsonBuffer, ms.reqParams.sql(ms.sql, t_user_info.userLogin));
+	}
+
 	//returns a single resultset
 	void dbget(std::string& jsonBuffer, config::microService& ms) 
 	{
@@ -177,13 +193,14 @@ namespace mse
 	}
 
 	//returns multiple resultsets from a single query
-	void dbgetm(std::string& jsonBuffer, config::microService& ms) {
+	void dbgetm(std::string& jsonBuffer, config::microService& ms) 
+	{
 		sql::get_json(ms.db, jsonBuffer, ms.reqParams.sql(ms.sql, t_user_info.userLogin), ms.varNames);
 	}
 
 	//execute data modification query (insert, update, delete) with no resultset returned
-	void dbexec(std::string& jsonBuffer, config::microService& ms) {
-
+	void dbexec(std::string& jsonBuffer, config::microService& ms) 
+	{
 		constexpr char STATUS_OK[] = "{\"status\": \"OK\"}";
 		constexpr char STATUS_ERROR[] = "{\"status\": \"ERROR\",\"description\" : \"System error\"}";
 
@@ -215,120 +232,101 @@ namespace mse
 	}
 
 	//kill session
-	void logout(std::string& jsonBuffer, config::microService& ms) {
+	void logout(std::string& jsonBuffer, config::microService& ms) 
+	{
 		constexpr char STATUS_OK[] = "{\"status\": \"OK\"}";
 		session::remove(t_user_info.sessionID);
 		jsonBuffer.append( STATUS_OK );
 	}
 
 	//return server status
-	void getServerInfo(std::string& jsonBuffer, config::microService& ms) {
-
-		char hostname[100]; gethostname(hostname, sizeof(hostname));
+	void getServerInfo(std::string& jsonBuffer, config::microService& ms) 
+	{
+		std::array<char, 128> hostname{0};
+		gethostname(hostname.data(), hostname.size());
 		const double avg{ ( g_counter > 0 ) ? g_total_time / g_counter : 0 };
-		char str1[20] = {'\0'}; std::to_chars(&str1[0], &str1[19], g_counter);
-		char str2[20] = {'\0'}; std::to_chars(&str2[0], &str2[19], avg, std::chars_format::fixed, 8);
-		char str3[20] = {'\0'}; std::to_chars(&str3[0], &str3[19], g_connections);
-		char str4[20] = {'\0'}; std::to_chars(&str4[0], &str4[19], g_active_threads);
+		std::array<char, 64> str1{0}; std::to_chars(str1.data(), str1.data() + str1.size(), g_counter);
+		std::array<char, 64> str2{0}; std::to_chars(str2.data(), str2.data() + str2.size(), avg, std::chars_format::fixed, 8);
+		std::array<char, 64> str3{0}; std::to_chars(str3.data(), str3.data() + str3.size(), g_connections);
+		std::array<char, 64> str4{0}; std::to_chars(str4.data(), str4.data() + str4.size(), g_active_threads);
 		
-		char outputBuffer[512]= {'\0'};
-		constexpr char json[] = "{\"status\": \"OK\", \"data\":[{\"pod\": \"%s\", \"totalRequests\": %s, \"avgTimePerRequest\": %s, \"startedOn\": \"%s\", \"connections\": %s, \"activeThreads\": %s}]}";
-		sprintf( outputBuffer, json, hostname, str1, str2, m_startedOn.c_str(), str3, str4 );
-		jsonBuffer.append( outputBuffer );
-
+		jsonBuffer.append("{\"status\": \"OK\", \"data\":[{\"pod\":\"").append(hostname.data()).append("\",");
+		jsonBuffer.append("\"totalRequests\":").append(str1.data()).append(",");
+		jsonBuffer.append("\"avgTimePerRequest\":").append(str2.data()).append(",");
+		jsonBuffer.append("\"startedOn\":\"").append(m_startedOn).append("\",");
+		jsonBuffer.append("\"connections\":").append(str3.data()).append(",");
+		jsonBuffer.append("\"activeThreads\":").append(str4.data()).append("}]}");
 	}
 
 	//return server metrics for Prometheus
-	void getMetrics(std::string& jsonBuffer, config::microService& ms) {
-
+	void getMetrics(std::string& jsonBuffer, config::microService& ms) 
+	{
 		t_user_info.contentType = "text/plain; version=0.0.4";
-		char hostname[100]; gethostname(hostname, sizeof(hostname));
+
+		std::array<char, 128> hostname{0};
+		gethostname(hostname.data(), hostname.size());
 		const double avg{ ( g_counter > 0 ) ? g_total_time / g_counter : 0 };
-		char str1[20] = {'\0'}; std::to_chars(&str1[0], &str1[19], g_counter);
-		char str2[20] = {'\0'}; std::to_chars(&str2[0], &str2[19], avg, std::chars_format::fixed, 8);
-		char str3[20] = {'\0'}; std::to_chars(&str3[0], &str3[19], g_connections);
-		char str4[20] = {'\0'}; std::to_chars(&str4[0], &str4[19], g_active_threads);
-		
-		char help1[] = "# HELP cpp_requests_total The number of HTTP requests processed by this container.\n";
-		char type1[] = "# TYPE cpp_requests_total counter\n";
-		char metric1[] = "cpp_requests_total{pod=\"%s\"} %s\n";
-		char output1[128]= {'\0'};
-		sprintf(output1, metric1, hostname, str1);
+		std::array<char, 64> str1{0}; std::to_chars(str1.data(), str1.data() + str1.size(), g_counter);
+		std::array<char, 64> str2{0}; std::to_chars(str2.data(), str2.data() + str2.size(), avg, std::chars_format::fixed, 8);
+		std::array<char, 64> str3{0}; std::to_chars(str3.data(), str3.data() + str3.size(), g_connections);
+		std::array<char, 64> str4{0}; std::to_chars(str4.data(), str4.data() + str4.size(), g_active_threads);
 
-		char help2[] = "# HELP cpp_connections Client tcp-ip connections.\n";
-		char type2[] = "# TYPE cpp_connections counter\n";
-		char metric2[] = "cpp_connections{pod=\"%s\"} %s\n";
-		char output2[128]= {'\0'};
-		sprintf(output2, metric2, hostname, str3);
+		jsonBuffer.append("# HELP cpp_requests_total The number of HTTP requests processed by this container.\n");
+		jsonBuffer.append("# TYPE cpp_requests_total counter\n");
+		jsonBuffer.append("cpp_requests_total{pod=\"").append(hostname.data()).append("\"} ").append(str1.data()).append("\n");
 
-		char help3[] = "# HELP cpp_active_threads Active threads.\n";
-		char type3[] = "# TYPE cpp_active_threads counter\n";
-		char metric3[] = "cpp_active_threads{pod=\"%s\"} %s\n";
-		char output3[128]= {'\0'};
-		sprintf(output3, metric3, hostname, str4);
+		jsonBuffer.append("# HELP cpp_connections Client tcp-ip connections.\n");
+		jsonBuffer.append("# TYPE cpp_connections counter\n");
+		jsonBuffer.append("cpp_connections{pod=\"").append(hostname.data()).append("\"} ").append(str3.data()).append("\n");
 
-		char help4[] = "# HELP cpp_avg_time Average request processing time in milliseconds.\n";
-		char type4[] = "# TYPE cpp_avg_time counter\n";
-		char metric4[] = "cpp_avg_time{pod=\"%s\"} %s\n";
-		char output4[128]= {'\0'};
-		sprintf(output4, metric4, hostname, str2);
+		jsonBuffer.append("# HELP cpp_active_threads Active threads.\n");
+		jsonBuffer.append("# TYPE cpp_active_threads counter\n");
+		jsonBuffer.append("cpp_active_threads{pod=\"").append(hostname.data()).append("\"} ").append(str4.data()).append("\n");
 
-		char help5[] = "# HELP sessions Number of logged in users.\n";
-		char type5[] = "# TYPE sessions counter\n";
-		char metric5[] = "sessions{pod=\"%s\"} %d\n";
-		char output5[128]= {'\0'};
-		sprintf(output5, metric5, hostname, session::get_total());
-		
-		jsonBuffer.append(help1); jsonBuffer.append(type1); jsonBuffer.append(output1);
-		jsonBuffer.append(help2); jsonBuffer.append(type2); jsonBuffer.append(output2);
-		jsonBuffer.append(help3); jsonBuffer.append(type3); jsonBuffer.append(output3);
-		jsonBuffer.append(help4); jsonBuffer.append(type4); jsonBuffer.append(output4);
-		jsonBuffer.append(help5); jsonBuffer.append(type5); jsonBuffer.append(output5);
+		jsonBuffer.append("# HELP cpp_avg_time Average request processing time in milliseconds.\n");
+		jsonBuffer.append("# TYPE cpp_avg_time counter\n");
+		jsonBuffer.append("cpp_avg_time{pod=\"").append(hostname.data()).append("\"} ").append(str2.data()).append("\n");
 
+		jsonBuffer.append("# HELP sessions Number of active logged-in users.\n");
+		jsonBuffer.append("# TYPE sessions counter\n");
+		jsonBuffer.append("sessions{pod=\"").append(hostname.data()).append("\"} ").append(std::to_string(session::get_total())).append("\n");
 	}
 
 	//active sessions in table cpp_session
-	void getSessionCount(std::string& jsonBuffer, config::microService& ms) {
-
-		char outputBuffer[64]= {'\0'};
-		constexpr char json[] = "{\"status\": \"OK\", \"data\":[{\"total\": %d}]}";
-		sprintf( outputBuffer, json, session::get_total() );
-		jsonBuffer.append( outputBuffer );
-
+	void getSessionCount(std::string& jsonBuffer, config::microService& ms) 
+	{
+		jsonBuffer.append("{\"status\": \"OK\", \"data\":[{\"total\":").append(std::to_string(session::get_total())).append("}]}");
 	}
 
 	//download file from filesystem given its ID from DB 
-	void downloadFile(std::string& jsonBuffer, config::microService& ms) {
-		
+	void downloadFile(std::string& jsonBuffer, config::microService& ms) 
+	{
 		auto rec = sql::get_record(ms.db, ms.reqParams.sql(ms.sql, t_user_info.userLogin));
-		
 		if ( rec.size() ) {
 			t_user_info.fileName = rec.at("filename");
 			t_user_info.contentType = rec.at("content_type");
 			std::string path{http::blob_path + rec.at("document")};
-			int read_fd = open(path.c_str(), O_RDONLY);
-			if ( read_fd > 0 ) {
-				struct stat stat_buf;
-				fstat(read_fd, &stat_buf);
-				std::vector<char> buffer(stat_buf.st_size);
-				size_t bytes_read = read(read_fd, buffer.data(), stat_buf.st_size);
-				jsonBuffer.append(buffer.data(), bytes_read);
-				close(read_fd);
-			} else {
-				logger::log(LOGGER_SRC, "error", "downloadFile()/open() failed - user: " + t_user_info.userLogin 
-					+ " uri: " + path, true); 
-				std::string error{"Error downloading file: " + t_user_info.fileName + " with ID: " + rec.at("document")};
-				t_user_info.fileName = "error.txt";
-				t_user_info.contentType = "text/plain";
-				jsonBuffer.append(error);
+			std::stringstream buffer;
+			{
+				std::ifstream file{path};
+				if (file.is_open()) {
+					buffer << file.rdbuf();
+					jsonBuffer.append(buffer.str());
+				} else {
+					logger::log(LOGGER_SRC, "error", "downloadFile -> cannot open file - user: " + t_user_info.userLogin 
+						+ " uri: " + path, true); 
+					std::string error{"Error downloading file: " + t_user_info.fileName + " with ID: " + rec.at("document")};
+					t_user_info.fileName = "error.txt";
+					t_user_info.contentType = "text/plain";
+					jsonBuffer.append(error);
+				}
 			}
 		}
-
 	}
 
 	//delete blob's record from database and the blob's file from filesystem
-	void deleteFile(std::string& jsonBuffer, config::microService& ms) {
-		
+	void deleteFile(std::string& jsonBuffer, config::microService& ms) 
+	{
 		constexpr char STATUS_OK[] = "{\"status\": \"OK\"}";
 		constexpr char STATUS_ERROR[] = "{\"status\": \"ERROR\",\"description\" : \"System error\"}";
 		
@@ -348,25 +346,25 @@ namespace mse
 	}
 
 	//minimal service used to measure performance overhead of the dispatching mechanism
-	void get_version(std::string& jsonBuffer, config::microService& ms) {
-		char outputBuffer[512]= {'\0'};
-		constexpr char json[] = "{\"status\": \"OK\", \"data\":[{\"pod\": \"%s\", \"server\": \"%s-%d\"}]}";
-		char hostname[100];
-		gethostname(hostname, sizeof(hostname));
-		sprintf(outputBuffer, json, hostname, SERVER_VERSION, CPP_BUILD_DATE);
-		jsonBuffer.append(outputBuffer);
+	void get_version(std::string& jsonBuffer, config::microService& ms) 
+	{
+		std::array<char, 128> hostname{0};
+		gethostname(hostname.data(), hostname.size());
+		jsonBuffer.append("{\"status\": \"OK\", \"data\":[{\"pod\": \"").append(hostname.data()).append("\", ");
+		jsonBuffer.append("\"server\": \"").append(SERVER_VERSION).append("-").append(std::to_string(CPP_BUILD_DATE)).append("\"}]}");
 	}
 
 	//minimal service used to ping/keepalive all database connections held by this thread
-	void ping(std::string& jsonBuffer, config::microService& ms) {
-		constexpr char json[] = "{\"status\": \"OK\"}";
-		jsonBuffer.append(json);
+	void ping(std::string& jsonBuffer, config::microService& ms) 
+	{
+		jsonBuffer.append("{\"status\": \"OK\"}");
 	}
 
 	//generic custom validators
 
 	//if the resultset is not empty then fail (jsonResp will contain something)
-	void db_nomatch(std::string &jsonResp, config::microService& ms) {
+	void db_nomatch(std::string &jsonResp, config::microService& ms) 
+	{
 
 		const std::string STATUS_ERROR = R"(
 		{
@@ -384,7 +382,8 @@ namespace mse
 	}
 
 	//if the resultset is empty then fail (jsonResp will contain something)
-	void db_match(std::string &jsonResp, config::microService& ms) {
+	void db_match(std::string &jsonResp, config::microService& ms) 
+	{
 
 		const std::string STATUS_ERROR = R"(
 		{
@@ -402,7 +401,10 @@ namespace mse
 	}
 
 
-	inline auto getFunctionPointer(const std::string& funcName) {
+	inline auto getFunctionPointer(const std::string& funcName) 
+	{
+		if (funcName=="dbget_json")
+			return dbget_json;
 		if (funcName=="dbget")
 			return dbget;
 		if (funcName=="dbgetm")
@@ -431,7 +433,8 @@ namespace mse
 		throw std::runtime_error("getFunctionPointer -> invalid function name: " + funcName);
 	}
 
-	inline auto getValidatorFunctionPointer(const std::string& funcName) {
+	inline auto getValidatorFunctionPointer(const std::string& funcName) 
+	{
 		if (funcName=="db_nomatch")
 			return db_nomatch;
 		if (funcName=="db_match")
@@ -440,7 +443,8 @@ namespace mse
 		throw std::runtime_error("getValidatorFunctionPointer -> invalid function name: " + funcName);
 	}
 
-	inline void validateRequestParams( std::string &jsonResp,  const httpRequestParameters& httpReq, config::requestParameters& params ) {
+	inline void validateRequestParams( std::string &jsonResp,  const httpRequestParameters& httpReq, config::requestParameters& params ) 
+	{
 
 		const std::string errMsgRequired = R"(
 		{
@@ -616,7 +620,8 @@ namespace mse
 		task.detach();
 	}
 	
-	struct service_engine {
+	struct service_engine 
+	{
 	  public:
 		service_engine() {
 			m_json_buffer.reserve(32767);
@@ -650,6 +655,8 @@ namespace mse
 				throw std::runtime_error("microservice path not found");
 			}
 		}
+
+		void init() {}
 
 	  private:
 		std::unordered_map<std::string, config::microService> m_service_map;
@@ -734,7 +741,8 @@ namespace mse
 			<< msg;
 	}
 
-	inline void microservice(http::request& req) {
+	inline void microservice(http::request& req) 
+	{
 
 		if (req.errcode == -1) {
 			send400(req);
@@ -825,26 +833,17 @@ namespace mse
 			return;
 		}
 
-		if (!t_page_cache.contains(target)) {
-			int read_fd;
-			struct stat stat_buf;
-			read_fd = open(target.c_str(), O_RDONLY);
-			if (read_fd == -1) {
+		std::stringstream buffer;
+		{
+			std::ifstream file{target};
+			if (file.is_open())
+				buffer << file.rdbuf();
+			else {
 				send404(req);
 				return;
 			}
-			if (t_page_cache.size()==0) {
-				t_page_cache.reserve(50);
-			}
-			fstat(read_fd, &stat_buf); 
-			std::vector<char> buffer(stat_buf.st_size);	
-			size_t bytes_read = read(read_fd, buffer.data(), stat_buf.st_size);
-			if (bytes_read < (size_t)stat_buf.st_size)
-				logger::log(LOGGER_SRC, "error", "fileserver - read() did not retrieve the whole file, file size: " + std::to_string(stat_buf.st_size) + " bytes read: " + std::to_string(bytes_read), true);
-			close(read_fd);
-			t_page_cache.insert({target, std::move(buffer)});
 		}
-		std::vector<char>& page = t_page_cache[target];
+		std::string page = buffer.str();
 		
 		http::response_stream& res = req.response;
 		res	<< "HTTP/1.1 200 OK" << "\r\n"
@@ -874,6 +873,7 @@ namespace mse
 			else
 				break;
 		}
+		t_service.init();
 	}
 
 	void http_server(int fd, http::request& req) noexcept

@@ -22,6 +22,7 @@
 #include <queue>
 #include <condition_variable>
 #include <stop_token>
+#include <map>
 #include "mse.h"
 
 int get_signalfd() noexcept;
@@ -155,7 +156,7 @@ void start_epoll(int port) noexcept
 	event_signal.events = EPOLLIN;
 	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, m_signal, &event_signal);
 
-	char data[131072];
+	std::array<char, 131072> data{0};
 	std::map<int, http::request> buffers;
 	const int MAXEVENTS = 64;
 	epoll_event events[MAXEVENTS];
@@ -215,13 +216,15 @@ void start_epoll(int port) noexcept
 				http::request& req = buffers[fd];
 				if (events[i].events & EPOLLIN) {
 					bool run_task {false};
-					int count {0};
-					while ((count = read(fd, data, sizeof(data)))) {
+					while (true) 
+					{
+						int count {0};
+						count = read(fd, data.data(), data.size());
 						if (count == -1 && errno == EAGAIN) {
 							break;
 						}
 						if (count > 0) {
-							if (read_request(fd, req, data, count)) {
+							if (read_request(fd, req, data.data(), count)) {
 								run_task = true;
 								break;
 							}
@@ -280,8 +283,8 @@ void print_server_info(std::string pod_name) noexcept
 
 void start_server() noexcept
 {
-	const int pool_size {env::pool_size()};
-	const int port {env::port()};
+	const auto pool_size {env::pool_size()};
+	const auto port {env::port()};
 
 	//create workers pool - consumers
 	std::vector<std::stop_source> stops(pool_size);
@@ -307,9 +310,10 @@ int main()
 {
 	m_signal = get_signalfd();
 	logger::log("signal", "info", "signal interceptor registered");
-	
-	char hostname[100]; gethostname(hostname, sizeof(hostname));
-	std::string pod_name(hostname);
+
+	std::array<char, 128> hostname{0};
+	gethostname(hostname.data(), hostname.size());
+	std::string pod_name(hostname.data());
 
 	print_server_info(pod_name);
 	config::parse();

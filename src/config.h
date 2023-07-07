@@ -2,7 +2,7 @@
  * config - load and parse /etc/cppserver/config.json - depends on json.h, logger
  *
  *  Created on: Feb 27, 2023
- *      Author: Martín Córdova cppserver@martincordova.com - https://cppserver.com
+ *      Author: Martin Cordova cppserver@martincordova.com - https://cppserver.com
  *      Disclaimer: some parts of this library may have been taken from sample code publicly available
  *		and written by third parties. Free to use in commercial projects, no warranties and no responsibilities assumed 
  *		by the author, use at your own risk. By using this code you accept the forementioned conditions.
@@ -11,12 +11,12 @@
 #define CONFIG_H_
 
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 #include <functional>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include "json.h"
+#include <sstream>
+#include <fstream>
 #include "logger.h"
 
 namespace config
@@ -39,27 +39,15 @@ namespace config
 				bool required;
 				inputFieldType datatype;
 				std::string value;
-
 				inputParam(std::string n, bool r, inputFieldType d): name{n}, required{r}, datatype{d}, value{""} {  }
-				inputParam(std::string n, bool r, inputFieldType d, std::string v): name{n}, required{r}, datatype{d}, value{v} { }
-				inputParam(inputParam&& other) : name{other.name}, required{other.required}, datatype{other.datatype} { 	}
-
-				inputParam(const inputParam& other) {
-					name = other.name;
-					required = other.required;
-					datatype = other.datatype;
-					value = other.value;
-				}
-
 			};
 
-			requestParameters( ) { }
-			requestParameters(std::vector<inputParam>& inputs): params{std::move(inputs)} { }
+			requestParameters() {}
 
 			inline std::string get(const std::string& name) const 
 			{
 				for (const inputParam& p:params) if (p.name==name) return p.value;
-					throw std::runtime_error("requestParameters.get: parameter not found: " + name);
+				throw std::runtime_error("requestParameters.get: parameter not found: " + name);
 			}
 
 			inline void set(const std::string& name, const std::string& value) 
@@ -145,7 +133,11 @@ namespace config
 				}
 				return body;
 			}
-
+			
+			void set_params(std::vector<inputParam> p) noexcept
+			{
+				params = p;
+			}
 		private:
 			std::vector<inputParam> params;
 

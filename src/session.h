@@ -2,7 +2,7 @@
  * session - security session manager using pgsql functions and stored procs - depends on libpq (pgsql native client API)
  *
  *  Created on: Feb 21, 2023
- *      Author: Martín Córdova cppserver@martincordova.com - https://cppserver.com
+ *      Author: Martin Cordova cppserver@martincordova.com - https://cppserver.com
  *      Disclaimer: some parts of this library may have been taken from sample code publicly available
  *		and written by third parties. Free to use in commercial projects, no warranties and no responsabilities assumed 
  *		by the author, use at your own risk. By using this code you accept the forementioned conditions.
@@ -13,6 +13,7 @@
 #include <string>
 #include <iostream>
 #include <unordered_map>
+#include <charconv>
 #include <libpq-fe.h>
 #include "env.h"
 #include "logger.h"

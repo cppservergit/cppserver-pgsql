@@ -14,7 +14,7 @@ namespace session
 			m_dbconnstr = env::get_str("CPP_SESSIONDB");
 			conn = PQconnectdb(m_dbconnstr.c_str());
 			if (PQstatus(conn) != CONNECTION_OK)
-				logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " " + std::string(PQerrorMessage(conn)), true);
+				logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + " " + std::string(PQerrorMessage(conn)), true);
 			else
 				prepare_sql();
 		}
@@ -28,13 +28,13 @@ namespace session
 		inline void reset_connection() noexcept
 		{
 			if ( PQstatus(conn) == CONNECTION_BAD ) {
-				logger::log(LOGGER_SRC, "warn", std::string(__PRETTY_FUNCTION__) + " connection to database " + std::string(PQdb(conn)) + " no longer valid, reconnecting... ", true);
+				logger::log(LOGGER_SRC, "warn", std::string(__FUNCTION__) + " connection to database " + std::string(PQdb(conn)) + " no longer valid, reconnecting... ", true);
 				PQfinish(conn);
 				conn = PQconnectdb(m_dbconnstr.c_str());
 				if (PQstatus(conn) != CONNECTION_OK)
-					logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " error reconnecting to database " + std::string(PQdb(conn)) + " - " + std::string(PQerrorMessage(conn)), true);
+					logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + " error reconnecting to database " + std::string(PQdb(conn)) + " - " + std::string(PQerrorMessage(conn)), true);
 				else {
-					logger::log(LOGGER_SRC, "info", std::string(__PRETTY_FUNCTION__) + " connection to database " +  std::string(PQdb(conn)) + " restored", true);
+					logger::log(LOGGER_SRC, "info", std::string(__FUNCTION__) + " connection to database " +  std::string(PQdb(conn)) + " restored", true);
 					prepare_sql();
 				}
 			}
@@ -75,7 +75,7 @@ namespace session
 			PQclear(res);
 			if ( PQstatus(db.conn) == CONNECTION_BAD ) {
 				if (retries == max_retries) {
-					logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " connection retries exhausted, cannot connect to database", true);
+					logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + " connection retries exhausted, cannot connect to database", true);
 					return false;
 				} else {
 					retries++;
@@ -83,7 +83,7 @@ namespace session
 					goto retry;
 				}
 			} else {
-				logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " " + std::string(PQerrorMessage(db.conn)), true);
+				logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + " " + std::string(PQerrorMessage(db.conn)), true);
 				return false;
 			}
 		}
@@ -128,7 +128,7 @@ namespace session
 			PQclear(res);
 			if ( PQstatus(db.conn) == CONNECTION_BAD ) {
 				if (retries == max_retries) {
-					logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " connection retries exhausted, cannot connect to database", true);
+					logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + " connection retries exhausted, cannot connect to database", true);
 					return false;
 				} else {
 					retries++;
@@ -136,7 +136,7 @@ namespace session
 					goto retry;
 				}
 			} else {
-				logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " " + std::string(PQerrorMessage(db.conn)), true);
+				logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + " " + std::string(PQerrorMessage(db.conn)), true);
 				return false;
 			}
 		}		
@@ -161,7 +161,7 @@ namespace session
 			const std::string sql{"call cpp_session_delete(" + id + ")"};
 			PGresult *res = PQexec(db.conn, sql.c_str());
 			if (PQresultStatus(res) != PGRES_COMMAND_OK)
-				logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " " + std::string(PQerrorMessage(db.conn)), true);
+				logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + " " + std::string(PQerrorMessage(db.conn)), true);
 			PQclear(res);
 		}
 		else {
@@ -175,9 +175,15 @@ namespace session
 		const std::string sql{"select * from cpp_session_count()"};
 		PGresult *res = PQexec(db.conn, sql.c_str());
 		if (PQresultStatus(res) != PGRES_TUPLES_OK)
-			logger::log(LOGGER_SRC, "error", std::string(__PRETTY_FUNCTION__) + " " + std::string(PQerrorMessage(db.conn)), true);
-		else if ( PQntuples(res) > 0) 
-			total = std::atoi( PQgetvalue(res, 0, 0) );
+			logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + " " + std::string(PQerrorMessage(db.conn)), true);
+		else if ( PQntuples(res) > 0) {
+			std::string str {PQgetvalue(res, 0, 0)};
+			auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), total);
+			if (ec == std::errc::invalid_argument)
+				logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + " -> invalid argument for std::from_chars: " + str, true);
+			else if (ec == std::errc::result_out_of_range)
+				logger::log(LOGGER_SRC, "error", std::string(__FUNCTION__) + " -> number out of range in std::from_chars: " + str, true);
+		}
 		PQclear(res);
 		return total;
 	}

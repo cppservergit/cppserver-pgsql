@@ -1,64 +1,60 @@
 #include "env.h"
 
-namespace env 
+namespace 
 {
-	struct env_vars {
+	const std::string LOGGER_SRC {"env"};
+	
+	struct env_vars 
+	{
 			env_vars();
-			int read_env(const char* name, int default_value) noexcept;
-			std::string loki_server{""};
-			int loki_port{read_env("CPP_LOKI_PORT", 3100)};
-			int port{read_env("CPP_PORT", 8080)};
-			int http_log{read_env("CPP_HTTP_LOG", 0)};
-			int stderr_log{read_env("CPP_STDERR_LOG", 1)};
-			int login_log{read_env("CPP_LOGIN_LOG", 0)};
-			int pool_size{read_env("CPP_POOL_SIZE", 4)};
+			unsigned short int read_env(const char* name, unsigned short int default_value) noexcept;
+			unsigned short int port{read_env("CPP_PORT", 8080)};
+			unsigned short int http_log{read_env("CPP_HTTP_LOG", 0)};
+			unsigned short int login_log{read_env("CPP_LOGIN_LOG", 0)};
+			unsigned short int pool_size{read_env("CPP_POOL_SIZE", 4)};
 	};	
 	
 	env_vars ev;
 	
 	env_vars::env_vars() 
 	{
-		if (const char* env_p = std::getenv("CPP_LOKI_SERVER"))
-			loki_server.append(env_p);				
 	}
 
-	int env_vars::read_env(const char* name, int default_value) noexcept
+	unsigned short int env_vars::read_env(const char* name, unsigned short int default_value) noexcept
 	{
-		if (const char* env_p = std::getenv(name)) 
-			return atoi(env_p);
-		else
-			return default_value;
+		unsigned short int value{default_value};
+		if (const char* env_p = std::getenv(name)) {
+			std::string_view str(env_p);
+			auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value);
+			if (ec == std::errc::invalid_argument)
+				logger::log(LOGGER_SRC, "warn", std::string(__FUNCTION__) + " -> invalid argument for std::from_chars: " + std::string(env_p) + " env-var: " + std::string(name), true);
+			else if (ec == std::errc::result_out_of_range)
+				logger::log(LOGGER_SRC, "warn", std::string(__FUNCTION__) + " -> number out of range in std::from_chars: " + std::string(env_p) + " env-var: " + std::string(name), true);
+		}
+		return value;
 	}
+}
 
+namespace env 
+{
 	std::string get_str(std::string name) noexcept
 	{
 		if (const char* env_p = std::getenv(name.c_str()))
 			return std::string(env_p);
-		else 
+		else {
 			return "";
+		}
 	}
 
-	bool loki_enabled() noexcept
-	{ return (ev.loki_server.empty() ? false : true); }
-
-	std::string loki_server() noexcept
-	{ return ev.loki_server; }
-
-	int loki_port() noexcept 
-	{ return ev.loki_port; }
-
-	int port() noexcept 
+	unsigned short int port() noexcept 
 	{ return ev.port; }
 
-	int http_log_enabled() noexcept 
+	unsigned short int http_log_enabled() noexcept 
 	{ return ev.http_log; }
 
-	int stderr_log_enabled() noexcept 
-	{ return ev.stderr_log; }
-
-	int pool_size() noexcept 
+	unsigned short int pool_size() noexcept 
 	{ return ev.pool_size; }
 
-	int login_log_enabled() noexcept 
+	unsigned short int login_log_enabled() noexcept 
 	{ return ev.login_log; }
 }
