@@ -110,7 +110,7 @@ As mentioned before, you may need to change the CC variable that points to the c
 SHELL=bash
 DATE=$(shell printf '%(%Y%m%d)T')
 CC=g++-12
-CC_OPTS=-Wno-unused-parameter -Wpedantic -Wall -Wextra -O3 -std=c++23 -pthread -flto=4 -fno-extern-tls-init
+CC_OPTS=-Wno-unused-parameter -Wpedantic -Wall -Wextra -O3 -std=c++23 -pthread -flto=6 -fno-extern-tls-init
 CC_LIBS=-lpq -lcurl
 CC_OBJS=env.o logger.o config.o audit.o email.o httputils.o sql.o login.o session.o mse.o main.o
 ```
