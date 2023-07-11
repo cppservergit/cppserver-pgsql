@@ -22,7 +22,7 @@
 #include <queue>
 #include <condition_variable>
 #include <stop_token>
-#include <map>
+#include <unordered_map>
 #include "mse.h"
 
 int get_signalfd() noexcept;
@@ -31,8 +31,6 @@ void start_epoll(int port) noexcept ;
 void start_server() noexcept;
 void consumer(std::stop_token tok) noexcept;
 bool read_request(http::request& req, const char* data, int bytes) noexcept;
-void http_server(int fd) noexcept;
-std::string get_ip_addr(int fd) noexcept;
 void print_server_info(std::string pod_name) noexcept;
 
 struct worker_params {
@@ -46,21 +44,11 @@ std::condition_variable m_cond;
 std::mutex m_mutex;
 int m_signal;
 
-inline std::string get_ip_addr(int fd) noexcept
-{
-	struct sockaddr_in addr;
-	socklen_t addrlen {sizeof(addr)};
-	getpeername(fd, (struct sockaddr*)&addr, &addrlen);
-	char* remote_ip = inet_ntoa(addr.sin_addr);
-	return std::string(remote_ip);
-}
-
-inline bool read_request(int fd, http::request& req, const char* data, int bytes) noexcept
+inline bool read_request(http::request& req, const char* data, int bytes) noexcept
 {
 	bool first_packet { (req.payload.size() > 0) ? false : true };
 	req.payload.append(data, bytes);
 	if (first_packet) {
-		req.remote_ip = get_ip_addr(fd);
 		req.parse();
 		if (req.method == "GET" || req.errcode ==  -1)
 			return true;
@@ -128,9 +116,12 @@ void consumer(std::stop_token tok) noexcept
 		mse::http_server(params.fd, params.req);
 		
 		//request ready, set epoll fd for output
+		#ifdef DEBUG
+			logger::log("epoll", "DEBUG", "consumer thread setting mode to pollout FD: " + std::to_string(params.fd), true);
+		#endif			
 		epoll_event event;
-		event.data.fd = params.fd;
 		event.events = EPOLLOUT | EPOLLET | EPOLLRDHUP;
+		event.data.ptr = &params.req;
 		epoll_ctl(params.epoll_fd, EPOLL_CTL_MOD, params.fd, &event);
 	}
 	
@@ -156,8 +147,9 @@ void start_epoll(int port) noexcept
 	event_signal.events = EPOLLIN;
 	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, m_signal, &event_signal);
 
-	std::array<char, 131072> data{0};
-	std::map<int, http::request> buffers;
+	std::array<char, 8192> data{};
+	std::unordered_map<int, http::request> buffers;
+	buffers.reserve(1500);
 	const int MAXEVENTS = 64;
 	epoll_event events[MAXEVENTS];
 	bool exit_loop {false};
@@ -168,10 +160,24 @@ void start_epoll(int port) noexcept
 		{
 			if (((events[i].events & EPOLLRDHUP) || (events[i].events & EPOLLHUP) || events[i].events & EPOLLERR))
 			{
-				int rc = close(events[i].data.fd);
+				if (events[i].data.ptr == NULL) {
+					logger::log("epoll", "error", "epoll data ptr is null - unable to retrieve request object");
+					continue;
+				}
+				http::request& req = *static_cast<http::request*>(events[i].data.ptr);
+				int fd {req.fd};			
+				#ifdef DEBUG
+					std::stringstream ss;
+					ss << &req;
+					logger::log("epoll", "DEBUG", "retrieved http::request (" + ss.str() + ") - FD: " + std::to_string(fd));
+				#endif
+				int rc = close(fd);
 				mse::update_connections(-1);
 				if (rc == -1)
 					logger::log("epoll", "error", "close FAILED for FD: " + std::to_string(events[i].data.fd) + " " + std::string(strerror(errno)));
+				#ifdef DEBUG
+					logger::log("epoll", "DEBUG", "close FD: " + std::to_string(fd));
+				#endif				
 			}
 			else if (m_signal == events[i].data.fd) //shutdown
 			{
@@ -189,53 +195,64 @@ void start_epoll(int port) noexcept
 					logger::log("epoll", "error", "connection accept FAILED for epoll FD: " + std::to_string(epoll_fd) + " " + std::string(strerror(errno)));
 					continue;
 				}
-
-				int rcvbuf {131072}, sndbuf {262144};
-				setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof rcvbuf);
-				setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sndbuf, sizeof sndbuf);
-				
-				if (!buffers.contains(fd))
-					 buffers.insert({fd, http::request()});
-				else {
-					 http::request& req = buffers[fd];
-					 if (!req.is_clear) {
-						logger::log("epoll", "warn", "invoking request.clear() on FD: " + std::to_string(fd) + " path: " + req.path);
-						req.clear();
-					 }
-				}
-								
 				mse::update_connections(1);
+				const char* remote_ip = inet_ntoa(((struct sockaddr_in*)&addr)->sin_addr);
+				auto& pair = *buffers.insert_or_assign(fd, http::request(fd, remote_ip)).first; //add or replace
 				epoll_event event;
-				event.data.fd = fd;
+				event.data.ptr = &pair.second; //store pointer to request object
 				event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
 				epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event);
+				#ifdef DEBUG
+					std::stringstream ss;
+					ss <<  &pair.second;
+					logger::log("epoll", "DEBUG", "stored pointer to http::request (" + ss.str() + ") - FD: " + std::to_string(fd));
+					logger::log("epoll", "DEBUG", "accept FD: " + std::to_string(fd));
+				#endif				
 			}
 			else // read/write
 			{
-				int fd {events[i].data.fd};
-				http::request& req = buffers[fd];
+				if (events[i].data.ptr == NULL) {
+					logger::log("epoll", "error", "epoll data ptr is null - unable to retrieve request object");
+					continue;
+				}
+				http::request& req = *static_cast<http::request*>(events[i].data.ptr);
+				int fd {req.fd};
+				#ifdef DEBUG
+					std::stringstream ss;
+					ss << &req;
+					logger::log("epoll", "DEBUG", "retrieved http::request (" + ss.str() + ") - FD: " + std::to_string(fd));
+				#endif
+				
 				if (events[i].events & EPOLLIN) {
+					#ifdef DEBUG
+						logger::log("epoll", "DEBUG", "epollin FD: " + std::to_string(fd));
+					#endif				
 					bool run_task {false};
 					while (true) 
 					{
-						int count {0};
-						count = read(fd, data.data(), data.size());
-						if (count == -1 && errno == EAGAIN) {
+						int count = read(fd, data.data(), data.size());
+						#ifdef DEBUG
+							logger::log("epoll", "DEBUG", "read " + std::to_string(count) + " bytes FD: " + std::to_string(fd));
+						#endif							
+						if (count == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
 							break;
 						}
 						if (count > 0) {
-							if (read_request(fd, req, data.data(), count)) {
+							if (read_request(req, data.data(), count)) {
 								run_task = true;
 								break;
 							}
 						}
 						else {
 							logger::log("epoll", "error", "read error FD: " + std::to_string(fd) + " " + std::string(strerror(errno)));
-							buffers[fd].clear();
+							req.clear();
 							break;
 						}
 					}
 					if (run_task) {
+						#ifdef DEBUG
+							logger::log("epoll", "DEBUG", "dispatching task FD: " + std::to_string(fd));
+						#endif
 						//producer
 						worker_params wp {epoll_fd, fd, req};
 						{
@@ -245,12 +262,15 @@ void start_epoll(int port) noexcept
 						}
 					}
 				} else if (events[i].events & EPOLLOUT) {
+					#ifdef DEBUG
+						logger::log("epoll", "DEBUG", "epollout FD: " + std::to_string(fd));
+					#endif				
 					//send response
 					if (req.response.write(fd)) {
 						req.clear();
 						epoll_event event;
-						event.data.fd = fd;
 						event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
+						event.data.ptr = &req;
 						epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &event);
 					}
 				}

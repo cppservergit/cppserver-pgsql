@@ -61,7 +61,7 @@ namespace http
 	
 	struct request {
 	  public:
-		int fd{0}; //socket fd
+		int fd; //socket fd
 		size_t bodyStartPos{0};
 		size_t contentLength{0};
 		bool isMultipart{false};
@@ -78,8 +78,9 @@ namespace http
 		std::unordered_map<std::string, std::string> headers;
 		std::unordered_map<std::string, std::string> params;
 		response_stream response;
-		bool is_clear {true};
 		request();
+		request(int fdes, const char* ip);
+		~request();
 		void clear();
 		void parse();
 		bool eof();

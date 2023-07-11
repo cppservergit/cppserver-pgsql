@@ -165,6 +165,9 @@ namespace http
 		buf += _pos1;
 		const char* end = data() + size();
 		ssize_t count = send(fd, buf, end - buf, MSG_NOSIGNAL);
+		#ifdef DEBUG
+			logger::log("epoll", "DEBUG", "send " + std::to_string(count) + " bytes FD: " + std::to_string(fd));
+		#endif			
 		if (count > 0) {
 			buf += count;
 			_pos1 += count;
@@ -181,19 +184,45 @@ namespace http
 					return false;
 			}
 			if (count <= 0 && errno != EAGAIN) {
-				logger::log("epoll", "error", std::string(__PRETTY_FUNCTION__) + " send() error: " + std::string(strerror(errno)) + " FD: " + std::to_string(fd));
+				logger::log("epoll", "error", std::string(__FUNCTION__) + " send() error: " + std::string(strerror(errno)) + " FD: " + std::to_string(fd));
 				return true;
 			}
 		}
 		return true;
 	}
 
-	request::request() 
+	request::request(int fdes, const char* ip): fd {fdes}, remote_ip {std::string(ip)}
 	{
+		#ifdef DEBUG
+			std::stringstream ss;
+			ss << this;
+			logger::log("http", "DEBUG", " http::request constructor (" + ss.str() + ") - FD: " + std::to_string(fd));
+		#endif		
 		headers.reserve(10);
 		params.reserve(10);
-		payload.reserve(131071);
+		payload.reserve(8191);
 	}
+
+	request::request() 
+	{
+		#ifdef DEBUG
+			std::stringstream ss;
+			ss << this;
+			logger::log("http", "DEBUG", " http::request default constructor (" + ss.str() + ") - FD: " + std::to_string(fd));
+		#endif		
+		headers.reserve(10);
+		params.reserve(10);
+		payload.reserve(8191);
+	}
+	
+	request::~request() 
+	{
+		#ifdef DEBUG
+			std::stringstream ss;
+			ss << this;
+			logger::log("http", "DEBUG", " http::request destructor (" + ss.str() + ") - FD: " + std::to_string(fd));
+		#endif
+	}	
 	
 	void request::clear() 
 	{
@@ -211,20 +240,18 @@ namespace http
 		bodyStartPos = 0;
 		contentLength = 0;
 		method = "";
-		remote_ip = "";
 		isMultipart = false;
-		is_clear = true;
 	}
 	
 	void request::parse() 
 	{
-		is_clear = false;
 		std::string_view str{payload};
 		bodyStartPos = str.find("\r\n\r\n") + 4;
 		line_reader lr(str.substr(0, bodyStartPos));
 	
 		if (bodyStartPos <= 4) {
-			errcode = -1; errmsg.append("Bad request format");
+			errcode = -1; 
+			errmsg.append("Bad request format");
 			return;
 		}
 	
@@ -234,19 +261,22 @@ namespace http
 			method = line.substr( 0, newpos );
 			nextpos = newpos;
 		} else {
-			errcode = -1; errmsg.append("Bad request -> 1st line lacks http method: ").append(line);
+			errcode = -1; 
+			errmsg.append("Bad request -> 1st line lacks http method: ").append(line);
 			return;
 		}
 
 		if (method != "GET" && method != "POST") {
-			errcode = -1; errmsg.append("Bad request -> only GET-POST are supported: ").append(method);
+			errcode = -1; 
+			errmsg.append("Bad request -> only GET-POST are supported: ").append(method);
 			return;
 		}
 
 		if (auto newpos = line.find("/", nextpos); newpos != std::string::npos) {
 			queryString = line.substr( newpos,  line.find(" ", newpos) - newpos );
 		} else {
-			errcode = -1; errmsg.append("Bad request -> 1st line lacks '/': ").append(line);
+			errcode = -1; 
+			errmsg.append("Bad request -> 1st line lacks '/': ").append(line);
 			return;
 		}
 
@@ -256,38 +286,52 @@ namespace http
 			path = queryString;
 		}
 
-		while (!lr.eof) {
-			std::string_view line = lr.getline();
-			if (line.size()==0) break;
-			if (auto newpos = line.find(":", 0); newpos != std::string::npos) {
-				auto h = headers.emplace(lowercase( std::string(line.substr( 0,  newpos)) ), line.substr( newpos + 2,  line.size() - newpos + 2));
-				if (h.first->first == "content-length")
-					contentLength = std::stoul(h.first->second);
-				else if (h.first->first == "content-type") {
-					if ( h.first->second.starts_with("multipart") ) {
-						isMultipart = true;
-						boundary = h.first->second.substr( h.first->second.find("=") + 1 );
+		try {
+			while (!lr.eof) {
+				std::string_view line = lr.getline();
+				if (line.size()==0) break;
+				if (auto newpos = line.find(":", 0); newpos != std::string::npos) {
+					auto h = headers.emplace(lowercase( std::string(line.substr( 0,  newpos)) ), line.substr( newpos + 2,  line.size() - newpos + 2));
+					if (!h.second) {
+						errcode = -1; 
+						errmsg = "Bad request -> duplicated header in request: " + h.first->first + " " + path;
 					}
+					if (h.first->first == "content-length")
+						contentLength = std::stoul(h.first->second);
+					else if (h.first->first == "content-type") {
+						if ( h.first->second.starts_with("multipart") ) {
+							isMultipart = true;
+							boundary = h.first->second.substr( h.first->second.find("=") + 1 );
+						}
+					}
+					else if (h.first->first == "x-forwarded-for")
+					{
+						remote_ip = h.first->second;					
+					}
+					else if (h.first->first == "cookie") {
+						cookie = get_cookie( h.first->second );
+					}
+					else if (h.first->first == "origin") {
+						origin = h.first->second;
+						origin = origin.empty() ? "null":  origin;
+					}
+				} else {
+					errcode = -1; 
+					errmsg = "Bad request -> header lacks ':'";
+					return;
 				}
-				else if (h.first->first == "x-forwarded-for")
-				{
-					remote_ip = h.first->second;					
-				}
-				else if (h.first->first == "cookie") {
-					cookie = get_cookie( h.first->second );
-				}
-				else if (h.first->first == "origin") {
-					origin = h.first->second;
-					origin = origin.empty() ? "null":  origin;
-				}
-			} else {
-				errcode = -1; errmsg = "Bad request -> header lacks ':'";
-				return ;
 			}
+		} catch (const std::exception& e) {
+			errcode = -1; errmsg = "Bad request -> runtime exception while parsing the headers: " + std::string(e.what());
+			return;
 		}
-		
 		if (method=="GET")
 			parse_query_string(queryString);
+		
+		if (contentLength <= 0 && method == "POST") {
+			errcode = -1; 
+			errmsg = "Bad request -> invalid content length: " + std::to_string(contentLength);
+		}
 		
 	}
 	
