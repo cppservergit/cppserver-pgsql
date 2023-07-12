@@ -174,7 +174,7 @@ void start_epoll(int port) noexcept
 				int rc = close(fd);
 				mse::update_connections(-1);
 				if (rc == -1)
-					logger::log("epoll", "error", "close FAILED for FD: " + std::to_string(events[i].data.fd) + " " + std::string(strerror(errno)));
+					logger::log("epoll", "error", "close FAILED for FD: " + std::to_string(fd) + " " + std::string(strerror(errno)));
 				#ifdef DEBUG
 					logger::log("epoll", "DEBUG", "close FD: " + std::to_string(fd));
 				#endif				
