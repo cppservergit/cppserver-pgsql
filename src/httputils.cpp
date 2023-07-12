@@ -115,7 +115,7 @@ namespace http
 	}
 	
 	response_stream::response_stream() {
-		_buffer.reserve(65535);
+		_buffer.reserve(16383);
 	}
 	
 	response_stream& response_stream::operator <<(std::string data) {

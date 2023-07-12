@@ -117,7 +117,7 @@ void consumer(std::stop_token tok) noexcept
 		
 		//request ready, set epoll fd for output
 		#ifdef DEBUG
-			logger::log("epoll", "DEBUG", "consumer thread setting mode to pollout FD: " + std::to_string(params.fd), true);
+			logger::log("epoll", "DEBUG", "consumer thread setting mode to epollout FD: " + std::to_string(params.fd), true);
 		#endif			
 		epoll_event event;
 		event.events = EPOLLOUT | EPOLLET | EPOLLRDHUP;
@@ -258,8 +258,8 @@ void start_epoll(int port) noexcept
 						{
 							std::scoped_lock lock {m_mutex};
 							m_queue.push(wp);
-							m_cond.notify_all();
 						}
+						m_cond.notify_all();
 					}
 				} else if (events[i].events & EPOLLOUT) {
 					#ifdef DEBUG
@@ -268,6 +268,9 @@ void start_epoll(int port) noexcept
 					//send response
 					if (req.response.write(fd)) {
 						req.clear();
+						#ifdef DEBUG
+							logger::log("epoll", "DEBUG", "write complete, setting mode to epollin FD: " + std::to_string(fd));
+						#endif							
 						epoll_event event;
 						event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
 						event.data.ptr = &req;
@@ -319,10 +322,7 @@ void start_server() noexcept
 	//shutdown workers
 	for (auto s: stops) {
 		s.request_stop();
-		{
-			std::scoped_lock lock {m_mutex};
-			m_cond.notify_all();
-		}
+		m_cond.notify_all();
 	}
 }
 

@@ -30,7 +30,7 @@
 
 namespace mse
 {
-	constexpr char SERVER_VERSION[] = "cppserver-pgsql v1.2.4";
+	constexpr char SERVER_VERSION[] = "cppserver-pgsql v1.2.5";
 	void init() noexcept;
 	void http_server(int fd, http::request& req) noexcept;
 	void update_connections(int n) noexcept;
